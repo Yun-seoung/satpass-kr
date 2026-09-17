@@ -1,0 +1,8 @@
+cache/sessions/
+cache/*.json
+cache/error.log
+.backup_pre_spec/
+.agents/
+.omc/
+node_modules/
+*.log

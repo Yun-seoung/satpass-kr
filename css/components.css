@@ -1,0 +1,281 @@
+/**
+ * components.css — SatPass KR UI 컴포넌트
+ * 카드(.wx-card, .station-bar, .controls, .sky-section 등), 버튼(.btn-*),
+ * 배지(.badge), 모달(.modal), 게이지(.gauge), 테이블(table/.table-wrap)
+ *
+ * redesign-skill(supanova-redesign-engine) 적용:
+ * 색상 팔레트는 이미 landing.html과 동일하므로 그대로 두고,
+ * 버튼류의 hover/active 인터랙션 물리감(미세한 scale + tinted glow)과
+ * 트랜지션 이징(--ease, landing.html의 CTA 버튼과 동일한 cubic-bezier)만
+ * 기존 구조를 깨지 않는 선에서 통일했다.
+ */
+
+/* ── 헤더 버튼 ── */
+.btn-ghost{background:none;border:1px solid rgba(255,255,255,.35);color:#fff;
+           padding:5px 12px;border-radius:6px;cursor:pointer;font:inherit;font-size:.85rem;
+           transition:background .35s var(--ease), transform .35s var(--ease)}
+.btn-ghost:hover{background:rgba(255,255,255,.1)}
+.btn-ghost:active{transform:scale(.97)}
+
+/* ── 모달 ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;
+          align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:32px 28px;width:100%;max-width:400px;
+       box-shadow:0 8px 40px rgba(0,0,0,.5),0 0 30px rgba(74,144,217,.06);color:var(--ink)}
+.modal h2{font-size:1.25rem;margin-bottom:20px}
+.modal .tabs{display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid var(--line)}
+.modal .tab{flex:1;text-align:center;padding:8px;cursor:pointer;font-weight:500;
+            color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-2px;
+            background:none;border-top:none;border-left:none;border-right:none;font:inherit;font-size:1rem;
+            transition:color .35s var(--ease), border-color .35s var(--ease)}
+.modal .tab.active{color:var(--cobalt);border-bottom-color:var(--cobalt)}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+.form-group input{width:100%;padding:9px 11px;border:1px solid var(--line);background:var(--bg);color:var(--ink);
+                  border-radius:6px;font:inherit;font-size:.95rem;
+                  transition:border-color .35s var(--ease), box-shadow .35s var(--ease)}
+.form-group input:focus{outline:none;border-color:var(--cobalt);
+                        box-shadow:0 0 0 3px rgba(74,144,217,.18)}
+.form-group input[readonly]{opacity:.7;cursor:not-allowed}
+.btn-primary{width:100%;padding:11px;background:var(--cobalt);color:#fff;border:none;
+             border-radius:6px;font:inherit;font-size:1rem;font-weight:600;cursor:pointer;margin-top:4px;
+             transition:background .35s var(--ease), transform .35s var(--ease), box-shadow .35s var(--ease)}
+.btn-primary:hover{background:var(--cobalt-dark);transform:scale(1.01);box-shadow:0 0 24px rgba(74,144,217,.25)}
+.btn-primary:active{transform:scale(.98)}
+.btn-primary:disabled{opacity:.5;cursor:wait;transform:none;box-shadow:none}
+.modal-err{color:var(--alert);font-size:.85rem;margin-top:10px;min-height:18px}
+.modal-close{position:absolute;top:14px;right:16px;background:none;border:none;
+             font-size:1.4rem;cursor:pointer;color:var(--muted);transition:color .35s var(--ease)}
+.modal-close:hover{color:var(--ink)}
+
+/* ── 관측지 패널 ── */
+.station-bar{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+             padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.station-bar .label{font-weight:600;flex:1;min-width:0}
+.station-bar .coords{color:var(--muted);font-size:.88rem}
+.btn-sm{padding:6px 14px;border:1px solid var(--line);border-radius:6px;
+        background:var(--bg);color:var(--ink);cursor:pointer;font:inherit;font-size:.85rem;white-space:nowrap;
+        transition:background .35s var(--ease), border-color .35s var(--ease), transform .35s var(--ease)}
+.btn-sm:hover{background:var(--panel2);border-color:var(--cobalt)}
+.btn-sm:active{transform:scale(.97)}
+.station-empty{color:var(--muted);font-size:.9rem;flex:1}
+
+/* ── 관측지 모달: 주소 검색 ── */
+.addr-row{display:flex;gap:8px;margin-bottom:8px}
+.addr-row input{flex:1}
+.city-presets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.city-chip{padding:4px 11px;border:1px solid var(--line);border-radius:999px;
+           background:var(--bg);color:var(--muted);font-size:.8rem;cursor:pointer;font:inherit;
+           transition:border-color .35s var(--ease), color .35s var(--ease)}
+.city-chip:hover{border-color:var(--cobalt);color:var(--cobalt)}
+.field-hint{font-size:.78rem;color:var(--muted);margin:-4px 0 12px}
+
+/* ── 우주기상 카드 ── */
+.wx-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;
+         box-shadow:0 0 20px rgba(74,144,217,.06)}
+.wx-card .k{font-size:.82rem;color:var(--muted);margin-bottom:4px}
+.wx-card .v{font-size:1.5rem;font-weight:600}
+.wx-card .sub{font-size:.8rem;color:var(--muted);margin-top:2px}
+.wx-card .line{font-size:1.05rem;font-weight:600;margin-top:2px}
+.wx-card .line.hint{font-size:.92rem;font-weight:400;color:var(--muted)}
+.stale-note{color:var(--warn);font-size:.78rem}
+
+.wx-main .emoji{font-size:1.7rem;line-height:1}
+.wx-main .headline{font-size:1.08rem;font-weight:600;margin:6px 0 3px}
+.wx-main .desc{font-size:.82rem;color:var(--muted)}
+.wx-main .kp-small{font-size:.75rem;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+
+/* ── 위성 선택 + 계산 ── */
+.controls{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+          padding:16px 20px;margin-bottom:20px;
+          display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.controls .field{display:flex;flex-direction:column;gap:4px}
+.controls label{font-size:.82rem;color:var(--muted)}
+.controls select,.controls input{padding:8px 10px;border:1px solid var(--line);
+                                  border-radius:6px;font:inherit;font-size:.9rem;background:var(--bg);color:var(--ink);
+                                  transition:border-color .35s var(--ease)}
+.btn-calc{padding:9px 22px;background:var(--cobalt);color:#fff;border:none;
+          border-radius:6px;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap;
+          transition:background .35s var(--ease), transform .35s var(--ease), box-shadow .35s var(--ease)}
+.btn-calc:hover{background:var(--cobalt-dark);transform:scale(1.02);box-shadow:0 0 24px rgba(74,144,217,.25)}
+.btn-calc:active{transform:scale(.98)}
+.btn-calc:disabled{opacity:.5;cursor:wait;transform:none;box-shadow:none}
+
+/* ── 메시지 ── */
+.msg{padding:11px 14px;border-radius:6px;margin-bottom:16px;display:none;font-size:.9rem}
+.msg.error{display:block;background:var(--alert-bg);color:var(--alert)}
+.msg.info{display:block;background:rgba(74,144,217,.14);color:var(--cobalt)}
+
+/* ── 패스 테이블 ── */
+.table-wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;padding:11px 10px;border-bottom:1px solid var(--line)}
+th{font-size:.8rem;font-weight:600;color:var(--muted);background:var(--panel)}
+tr:last-child td{border-bottom:none}
+tbody tr{cursor:pointer}
+tr td{transition:background .25s var(--ease)}
+tr:hover td{background:rgba(74,144,217,.08)}
+tr.sel td{background:rgba(74,144,217,.14);box-shadow:inset 2px 0 0 var(--cobalt)}
+
+.gauge{display:flex;align-items:center;gap:8px}
+.gauge .bar{width:72px;height:7px;background:var(--line);border-radius:4px;overflow:hidden;flex-shrink:0}
+.gauge .fill{height:100%;background:linear-gradient(90deg,var(--cobalt),var(--purple));border-radius:4px}
+
+.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.8rem;font-weight:600}
+.badge.좋음{background:var(--ok-bg);color:var(--ok)}
+.badge.보통{background:var(--warn-bg);color:var(--warn)}
+.badge.나쁨{background:var(--alert-bg);color:var(--alert)}
+.note{color:var(--muted);font-size:.78rem;margin-top:2px}
+td .note{display:block}
+
+.empty-row td{color:var(--muted);text-align:center;padding:32px}
+
+/* ── 스카이 플롯 ── */
+.sky-section{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+             padding:18px 20px;margin-top:20px;box-shadow:0 0 20px rgba(123,104,238,.06)}
+.sky-section h3{font-size:1rem;font-weight:600;margin-bottom:6px}
+
+/* 좌: 쉬운 설명(3단계 요약) / 우: 지구본 시각화 — 랜딩페이지 하늘 방향 안내와 동일한 구성 */
+.sky-grid{display:flex;gap:28px;flex-wrap:wrap;align-items:center}
+.sky-info{flex:1 1 320px;min-width:280px}
+.sky-icon{display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;
+          border-radius:50%;background:rgba(123,104,238,.12);color:var(--purple);
+          font-size:1.1rem;margin-bottom:12px}
+.sky-sub{color:var(--muted);font-size:.85rem;margin-bottom:16px}
+
+.sky-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.sky-step{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}
+.sky-step-icon{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
+               border-radius:50%;font-size:.8rem;font-weight:700;margin-bottom:6px}
+.sky-step-icon.start{background:var(--ok-bg);color:var(--ok)}
+.sky-step-icon.peak{background:rgba(123,104,238,.14);color:var(--purple)}
+.sky-step-icon.end{background:var(--alert-bg);color:var(--alert)}
+.sky-step-label{font-size:.72rem;color:var(--muted);margin-bottom:2px}
+.sky-step-value{font-size:.95rem;font-weight:700;color:var(--ink)}
+
+.sky-desc{color:var(--muted);font-size:.92rem;line-height:1.8}
+.sky-desc b{color:var(--ink);font-weight:600}
+.sky-empty{color:var(--muted);font-size:.9rem}
+
+/* 지구본으로 보여주기: 로그인 화면과 동일한 지구 그라디언트를 배경으로 깔고,
+   그 위에 실제 계산된 궤적을 캔버스로 그린다 */
+.sky-globe{
+  position:relative;
+  flex:1.2 1 340px;
+  min-width:300px;
+  height:240px;
+  overflow:hidden;
+  border-radius:14px;
+  border:1px solid var(--line);
+  background:var(--bg);
+}
+.sky-globe-earth{
+  position:absolute;
+  left:50%; top:130px;
+  transform:translateX(-50%);
+  width:460px; height:460px;
+  border-radius:50%;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 38% 20%, rgba(255,255,255,.42) 0%, rgba(255,255,255,.08) 10%, transparent 20%),
+    radial-gradient(circle at 53% 30%, rgba(255,255,255,.28) 0%, rgba(255,255,255,.05) 12%, transparent 22%),
+    radial-gradient(circle at 30% 40%, rgba(110,130,90,.32) 0%, rgba(110,130,90,.05) 14%, transparent 24%),
+    radial-gradient(circle at 55% 45%, rgba(95,75,55,.26) 0%, rgba(95,75,55,.05) 16%, transparent 26%),
+    radial-gradient(circle at 34% 24%, rgba(210,235,255,.42) 0%, rgba(210,235,255,.08) 14%, transparent 26%),
+    radial-gradient(circle at 38% 30%, #2f7bc0 0%, #1e5f9c 14%, #154a80 26%, #0c2f5c 44%, #061c3d 64%, #020c1e 84%, #00030a 100%);
+  box-shadow:0 0 0 1px rgba(160,205,255,.3), 0 0 60px 10px rgba(110,175,255,.28);
+}
+#skyCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* ── 로그인/회원가입 (지구 배경 + 유리 카드) ── */
+.login-prompt{
+  position:relative;
+  overflow:hidden;
+  min-height:calc(100vh - 57px);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:64px 20px;
+  margin:-28px -20px -64px;
+  background:transparent;
+}
+
+/* 순수 CSS로 그린 지구본 — bg-login.png 배경 이미지로 대체되어 더 이상 사용하지 않는다 */
+.earth-bg{
+  display:none;
+  position:absolute;
+  top:-300px; right:-260px;
+  width:1100px; height:1100px;
+  border-radius:50%;
+  pointer-events:none;
+  z-index:0;
+  background:
+    /* 구름 패치(작은 코어 + 짧은 페이드로 부드럽되 과하지 않게) */
+    radial-gradient(circle at 38% 20%, rgba(255,255,255,.45) 0%, rgba(255,255,255,.1) 12%, transparent 22%),
+    radial-gradient(circle at 53% 34%, rgba(255,255,255,.3) 0%, rgba(255,255,255,.06) 14%, transparent 24%),
+    radial-gradient(circle at 27% 43%, rgba(255,255,255,.26) 0%, rgba(255,255,255,.05) 12%, transparent 20%),
+    radial-gradient(circle at 46% 53%, rgba(255,255,255,.18) 0%, rgba(255,255,255,.04) 14%, transparent 22%),
+    /* 대륙 톤 패치 */
+    radial-gradient(circle at 44% 28%, rgba(110,130,90,.32) 0%, rgba(110,130,90,.06) 16%, transparent 26%),
+    radial-gradient(circle at 58% 47%, rgba(95,75,55,.28) 0%, rgba(95,75,55,.05) 18%, transparent 28%),
+    radial-gradient(circle at 33% 55%, rgba(90,110,80,.24) 0%, rgba(90,110,80,.05) 15%, transparent 24%),
+    /* 태양광 반사 하이라이트 */
+    radial-gradient(circle at 32% 22%, rgba(210,235,255,.45) 0%, rgba(210,235,255,.1) 16%, transparent 30%),
+    /* 기본 구체: 밝은 면 → 어두운 면 */
+    radial-gradient(circle at 36% 28%, #2f7bc0 0%, #1e5f9c 14%, #154a80 26%, #0c2f5c 44%, #061c3d 64%, #020c1e 84%, #00030a 100%);
+  box-shadow:
+    0 0 0 1px rgba(160,205,255,.35),
+    0 0 100px 14px rgba(110,175,255,.35),
+    inset -160px -120px 240px rgba(0,0,0,.85),
+    inset 70px 55px 150px rgba(170,215,255,.22);
+}
+.earth-bg::after{
+  content:'';
+  position:absolute; inset:0; border-radius:50%;
+  box-shadow:inset 0 0 0 2px rgba(160,205,255,.18);
+}
+
+.auth-card{
+  position:relative;
+  z-index:1;
+  width:100%;
+  max-width:420px;
+  background:rgba(20,24,41,.55);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:20px;
+  padding:36px 32px;
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  box-shadow:0 30px 80px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
+  text-align:center;
+}
+.auth-card h1{font-size:1.4rem;font-weight:700;line-height:1.45;color:var(--ink)}
+.auth-card h1 .accent{
+  background:linear-gradient(90deg,var(--cobalt),var(--purple));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.auth-card > p{margin:10px 0 26px;color:var(--muted);font-size:.88rem}
+
+/* 탭: 참고 디자인처럼 필박스 형태로 오버라이드(기존 모달 탭은 밑줄 형태) */
+.auth-card .tabs{
+  display:flex;gap:6px;background:rgba(255,255,255,.04);border:1px solid var(--line);
+  border-radius:12px;padding:4px;margin-bottom:22px;
+}
+.auth-card .tab{
+  flex:1;text-align:center;padding:9px 0;cursor:pointer;font-weight:500;font-size:.9rem;
+  color:var(--muted);border:none;border-radius:9px;background:none;font:inherit;margin-bottom:0;
+  transition:color .35s var(--ease), background .35s var(--ease);
+}
+.auth-card .tab.active{
+  color:#fff;background:linear-gradient(90deg,var(--cobalt),var(--purple));
+}
+
+.auth-card .form-group{text-align:left;position:relative}
+.auth-card .form-group input{padding-left:40px;background-repeat:no-repeat;background-position:13px center;background-size:16px}
+#loginId, #regId{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238B8FA3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='8' r='4'/%3E%3Cpath d='M4 20c0-4.4 3.6-6 8-6s8 1.6 8 6'/%3E%3C/svg%3E");
+}
+#loginPw, #regPw, #regPw2{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238B8FA3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='5' y='11' width='14' height='9' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0 1 8 0v4'/%3E%3C/svg%3E");
+}

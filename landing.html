@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SatPass KR — 오늘 밤, ISS가 지나갑니다</title>
+<meta name="description" content="오늘 밤 ISS가 몇 시에 지나가는지, 우주기상은 괜찮은지 — 한국어로 한 번에 확인하는 위성 관측 서비스, SatPass KR.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230B0D17'/%3E%3Ccircle cx='16' cy='16' r='7' fill='%234A90D9'/%3E%3C/svg%3E">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.min.css">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://code.iconify.design/iconify-icon/2.3.0/iconify-icon.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          bg:      '#0B0D17',
+          panel:   '#141829',
+          line:    '#1E2340',
+          ink:     '#E1E3EA',
+          muted:   '#8B8FA3',
+          cobalt:  '#4A90D9',
+          accent2: '#7B68EE',
+          ok:      '#3DDC84',
+          warn:    '#FFB800',
+          alert:   '#FF4444',
+        },
+        fontFamily: {
+          sans:    ['Pretendard', 'system-ui', 'sans-serif'],
+          display: ['Outfit', 'Pretendard', 'system-ui', 'sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+
+<style>
+  html { scroll-behavior: smooth; }
+  body { background:#0B0D17; font-family:'Pretendard','system-ui',sans-serif; }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(1.75rem);
+    filter: blur(6px);
+    transition: opacity .8s cubic-bezier(.16,1,.3,1),
+                transform .8s cubic-bezier(.16,1,.3,1),
+                filter .8s cubic-bezier(.16,1,.3,1);
+    transition-delay: calc(var(--i, 0) * 90ms);
+  }
+  .reveal.is-visible { opacity: 1; transform: translateY(0); filter: blur(0); }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-18px); }
+  }
+  @keyframes floatSlow {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%      { transform: translateY(14px) scale(1.04); }
+  }
+
+  /* 히어로 텍스트: 스크롤 진행에 따라 JS가 opacity/transform을 덮어쓴다 */
+  #heroTextGroup { opacity: 0; transform: translateY(28px); pointer-events: none; }
+
+  .grain {
+    position: fixed; inset: 0; z-index: 60; pointer-events: none; opacity: .035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* 하늘 방향 안내 카드: 로그인 화면과 동일한 순수 CSS 지구본을 축소 재사용 */
+  .mini-earth {
+    position: absolute;
+    top: 88px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 460px;
+    height: 460px;
+    border-radius: 50%;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 38% 20%, rgba(255,255,255,.42) 0%, rgba(255,255,255,.08) 10%, transparent 20%),
+      radial-gradient(circle at 53% 30%, rgba(255,255,255,.28) 0%, rgba(255,255,255,.05) 12%, transparent 22%),
+      radial-gradient(circle at 30% 40%, rgba(110,130,90,.32) 0%, rgba(110,130,90,.05) 14%, transparent 24%),
+      radial-gradient(circle at 55% 45%, rgba(95,75,55,.26) 0%, rgba(95,75,55,.05) 16%, transparent 26%),
+      radial-gradient(circle at 34% 24%, rgba(210,235,255,.42) 0%, rgba(210,235,255,.08) 14%, transparent 26%),
+      radial-gradient(circle at 38% 30%, #2f7bc0 0%, #1e5f9c 14%, #154a80 26%, #0c2f5c 44%, #061c3d 64%, #020c1e 84%, #00030a 100%);
+    box-shadow:
+      0 0 0 1px rgba(160,205,255,.3),
+      0 0 60px 10px rgba(110,175,255,.28);
+  }
+</style>
+</head>
+<body class="min-h-[100dvh] bg-bg text-ink antialiased">
+
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ── 네비게이션 ── -->
+<header class="fixed inset-x-0 top-4 z-40 flex justify-center px-4">
+  <div class="flex w-full max-w-3xl items-center justify-between gap-4 rounded-full border border-white/10 bg-white/5 px-5 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] backdrop-blur-xl">
+    <span class="font-display text-lg font-bold tracking-tight text-ink">SatPass&nbsp;<span class="text-cobalt">KR</span></span>
+    <a href="index.html"
+       class="group inline-flex items-center gap-2 rounded-full bg-cobalt px-5 py-2.5 text-sm font-semibold text-white transition-all duration-500 [transition-timing-function:cubic-bezier(.16,1,.3,1)] hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(74,144,217,0.35)] active:scale-[0.98]">
+      로그인 / 시작하기
+      <span class="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[11px] transition-transform duration-500 group-hover:translate-x-0.5">
+        <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
+      </span>
+    </a>
+  </div>
+</header>
+
+<main>
+
+<!-- ── 히어로 ── -->
+<section id="hero" class="relative" style="height:220vh">
+  <div id="heroStage" class="sticky top-0 h-[100dvh] w-full overflow-hidden bg-bg">
+
+    <video id="heroVideo" autoplay muted loop playsinline fetchpriority="high" aria-hidden="true"
+           class="absolute inset-0 h-full w-full object-cover will-change-transform [filter:contrast(1.12)_saturate(1.14)_brightness(1.02)]">
+      <source src="assets/demo.mp4" type="video/mp4">
+    </video>
+
+    <!-- 720p 소스를 풀스크린으로 확대할 때 생기는 흐릿함을 완화하는 비네트 + 그레인 -->
+    <div class="pointer-events-none absolute inset-0" style="background:radial-gradient(ellipse at center, transparent 50%, rgba(11,13,23,0.4) 100%)"></div>
+    <div class="pointer-events-none absolute inset-0 opacity-[0.055]" style="background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;)"></div>
+
+    <div id="heroOverlay" class="pointer-events-none absolute inset-0 bg-bg"></div>
+    <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-bg via-bg/10 to-transparent"></div>
+
+    <div id="heroTextGroup" class="absolute inset-x-0 bottom-0 z-10 mx-auto max-w-3xl px-4 pb-24 text-center will-change-transform sm:px-6 sm:pb-28 lg:px-8">
+      <span class="inline-flex items-center gap-2 rounded-full border border-cobalt/30 bg-cobalt/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.15em] text-cobalt backdrop-blur-sm">
+        <iconify-icon icon="solar:radar-2-linear"></iconify-icon> 위성 관측 · 우주기상
+      </span>
+
+      <h1 class="mt-6 break-keep font-display text-4xl font-bold leading-tight tracking-tight text-ink sm:text-5xl md:text-6xl lg:text-[3.75rem]">
+        오늘 밤,
+        <span class="bg-gradient-to-r from-cobalt to-accent2 bg-clip-text text-transparent">ISS</span>가 지나갑니다
+      </h1>
+
+      <p class="mx-auto mt-6 max-w-[46ch] break-keep text-base leading-relaxed text-muted md:text-lg">
+        몇 시에 어느 방향을 보면 되는지, 우주기상은 괜찮은지 <br> 한국어로 한 번에.
+      </p>
+
+      <div class="mt-9 flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
+        <a href="index.html"
+           class="group inline-flex items-center gap-3 rounded-full bg-cobalt px-8 py-4 text-base font-semibold text-white transition-all duration-500 [transition-timing-function:cubic-bezier(.16,1,.3,1)] hover:scale-[1.02] hover:shadow-[0_0_40px_rgba(74,144,217,0.35)] active:scale-[0.98]">
+          지금 무료로 시작하기
+          <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 transition-transform duration-500 group-hover:translate-x-1">
+            <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
+          </span>
+        </a>
+        <div class="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-sm text-muted">
+          <span class="inline-flex items-center gap-1.5"><iconify-icon icon="solar:check-circle-linear" class="text-ok"></iconify-icon>회원가입 무료</span>
+          <span class="text-line">·</span>
+          <span class="inline-flex items-center gap-1.5"><iconify-icon icon="solar:check-circle-linear" class="text-ok"></iconify-icon>API 키 불필요</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="heroScrollCue" class="absolute inset-x-0 bottom-6 z-10 flex justify-center">
+      <a href="#problem" class="flex flex-col items-center gap-2 text-muted transition-colors duration-300 hover:text-cobalt">
+        <span class="text-xs">스크롤해서 더 알아보기</span>
+        <iconify-icon icon="solar:double-alt-arrow-down-linear" class="animate-bounce text-lg"></iconify-icon>
+      </a>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── 기존 서비스의 문제 ── -->
+<section id="problem" class="relative py-20 md:py-28">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div data-reveal class="reveal max-w-2xl">
+      <span class="inline-block rounded-full bg-alert/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.15em] text-alert">불편함</span>
+      <h2 class="mt-4 break-keep font-display text-3xl font-bold leading-snug tracking-tight text-ink md:text-4xl">매번 이렇게 하고 계셨나요?</h2>
+    </div>
+
+    <div class="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3 md:items-stretch">
+      <div data-reveal style="--i:0" class="reveal flex flex-col rounded-2xl border border-alert/25 bg-alert/[0.04] p-8">
+        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-alert/10 text-alert">
+          <iconify-icon icon="solar:close-circle-linear" class="text-2xl"></iconify-icon>
+        </div>
+        <p class="mt-6 break-keep text-xl font-bold leading-snug text-ink">영문 사이트를 열고</p>
+        <p class="mt-3 break-keep text-base leading-relaxed text-muted">Heavens-Above, N2YO는 전부 영문 인터페이스예요.</p>
+      </div>
+
+      <div data-reveal style="--i:1" class="reveal flex flex-col rounded-2xl border border-alert/25 bg-alert/[0.04] p-8">
+        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-alert/10 text-alert">
+          <iconify-icon icon="solar:close-circle-linear" class="text-2xl"></iconify-icon>
+        </div>
+        <p class="mt-6 break-keep text-xl font-bold leading-snug text-ink">UTC 시간을 KST로 변환하고</p>
+        <p class="mt-3 break-keep text-base leading-relaxed text-muted">머릿속으로 9시간을 더해가며 시간을 계산해야 해요.</p>
+      </div>
+
+      <div data-reveal style="--i:2" class="reveal flex flex-col rounded-2xl border border-alert/25 bg-alert/[0.04] p-8">
+        <div class="flex h-12 w-12 items-center justify-center rounded-full bg-alert/10 text-alert">
+          <iconify-icon icon="solar:close-circle-linear" class="text-2xl"></iconify-icon>
+        </div>
+        <p class="mt-6 break-keep text-xl font-bold leading-snug text-ink">또 다른 사이트에서 우주기상 확인</p>
+        <p class="mt-3 break-keep text-base leading-relaxed text-muted">두 곳을 오가며 정보를 직접 조합해야 했어요.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 우리 서비스 특징 ── -->
+<section id="features" class="relative bg-panel/40 py-20 md:py-28">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div data-reveal class="reveal ml-auto max-w-2xl text-right">
+      <span class="inline-block rounded-full bg-cobalt/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.15em] text-cobalt">차별점</span>
+      <h2 class="mt-4 break-keep font-display text-3xl font-bold leading-snug tracking-tight text-ink md:text-4xl">SatPass KR은 달라요</h2>
+    </div>
+
+    <div class="mt-16 grid grid-cols-1 gap-6 md:grid-cols-3 md:items-stretch">
+      <div data-reveal style="--i:0" class="reveal flex flex-col rounded-2xl border border-line bg-bg p-8">
+        <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-cobalt/10 text-cobalt">
+          <iconify-icon icon="solar:global-linear" class="text-3xl"></iconify-icon>
+        </div>
+        <h3 class="mt-6 break-keep text-2xl font-bold leading-snug text-ink">한국어 인터페이스</h3>
+        <p class="mt-3 break-keep text-base leading-relaxed text-muted">처음부터 끝까지 한국어로만 되어 있어요.</p>
+      </div>
+
+      <div data-reveal style="--i:1" class="reveal flex flex-col rounded-2xl border border-line bg-bg p-8">
+        <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-cobalt/10 text-cobalt">
+          <iconify-icon icon="solar:clock-circle-linear" class="text-3xl"></iconify-icon>
+        </div>
+        <h3 class="mt-6 break-keep text-2xl font-bold leading-snug text-ink">KST 기준 시각</h3>
+        <p class="mt-3 break-keep text-base leading-relaxed text-muted">UTC 변환 없이 바로 한국 시간으로 확인해요.</p>
+      </div>
+
+      <div data-reveal style="--i:2" class="reveal flex flex-col rounded-2xl border border-line bg-bg p-8">
+        <div class="flex h-16 w-16 items-center justify-center rounded-2xl bg-cobalt/10 text-cobalt">
+          <iconify-icon icon="solar:widget-5-linear" class="text-3xl"></iconify-icon>
+        </div>
+        <h3 class="mt-6 break-keep text-2xl font-bold leading-snug text-ink">패스 + 우주기상 통합</h3>
+        <p class="mt-3 break-keep text-base leading-relaxed text-muted">한 화면에서 모든 정보를 한 번에 확인하세요.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── 실제 기능 미리보기 ── -->
+<section id="preview" class="relative py-20 md:py-28">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div data-reveal class="reveal max-w-2xl">
+      <span class="inline-block rounded-full bg-accent2/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.15em] text-accent2">실제 화면</span>
+      <h2 class="mt-4 break-keep font-display text-3xl font-bold leading-snug tracking-tight text-ink md:text-4xl">이런 정보를 보여드려요</h2>
+    </div>
+
+    <div class="mt-14 grid grid-cols-1 gap-6 md:grid-cols-3">
+
+      <div data-reveal style="--i:0" class="reveal rounded-[1.75rem] border border-line bg-panel p-8 md:col-span-2">
+        <div class="flex h-11 w-11 items-center justify-center rounded-full bg-cobalt/10 text-cobalt">
+          <iconify-icon icon="solar:clock-circle-linear" class="text-xl"></iconify-icon>
+        </div>
+        <h3 class="mt-5 break-keep text-lg font-semibold text-ink">위성 통과 시간</h3>
+        <p class="mt-2 max-w-[42ch] break-keep text-sm leading-relaxed text-muted">오늘 밤 ISS가 언제, 어느 방향으로 지나가는지 한눈에 확인하세요.</p>
+
+        <div class="mt-5 flex flex-wrap gap-2">
+          <span class="inline-flex items-center gap-1.5 rounded-full border border-line bg-bg/60 px-3 py-1.5 text-xs text-muted">
+            <iconify-icon icon="solar:satellite-linear" class="text-cobalt"></iconify-icon> 오늘 밤 통과 3회
+          </span>
+          <span class="inline-flex items-center gap-1.5 rounded-full border border-line bg-bg/60 px-3 py-1.5 text-xs text-muted">
+            <iconify-icon icon="solar:star-linear" class="text-warn"></iconify-icon> 최고 고도 67.8°
+          </span>
+        </div>
+
+        <div class="mt-5 overflow-x-auto rounded-xl border border-line">
+          <table class="w-full min-w-[480px] text-sm">
+            <thead>
+              <tr class="text-left text-xs text-muted">
+                <th class="px-4 py-3 font-medium">위성</th>
+                <th class="px-4 py-3 font-medium">통과 시작 (KST)</th>
+                <th class="px-4 py-3 font-medium">최고 앙각</th>
+                <th class="px-4 py-3 font-medium">방위</th>
+                <th class="px-4 py-3 font-medium">지속시간</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-t border-line">
+                <td class="px-4 py-3 font-medium text-ink">ISS</td>
+                <td class="px-4 py-3 tabular-nums text-ink">09.16. 17:14</td>
+                <td class="px-4 py-3 tabular-nums text-ink">67.8°</td>
+                <td class="px-4 py-3 text-muted">WSW → NE</td>
+                <td class="px-4 py-3 tabular-nums text-ink">6.3분</td>
+              </tr>
+              <tr class="border-t border-line">
+                <td class="px-4 py-3 font-medium text-ink">ISS</td>
+                <td class="px-4 py-3 tabular-nums text-muted">09.16. 18:49</td>
+                <td class="px-4 py-3 tabular-nums text-muted">21.4°</td>
+                <td class="px-4 py-3 text-muted">NW → N</td>
+                <td class="px-4 py-3 tabular-nums text-muted">3.1분</td>
+              </tr>
+              <tr class="border-t border-line">
+                <td class="px-4 py-3 font-medium text-ink">Starlink-5678</td>
+                <td class="px-4 py-3 tabular-nums text-muted">09.16. 20:02</td>
+                <td class="px-4 py-3 tabular-nums text-muted">44.0°</td>
+                <td class="px-4 py-3 text-muted">SW → NE</td>
+                <td class="px-4 py-3 tabular-nums text-muted">4.5분</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-3 break-keep text-xs text-muted">* 실제 값은 접속 시각과 관측지 좌표에 따라 자동으로 계산돼요.</p>
+      </div>
+
+      <div data-reveal style="--i:1" class="reveal flex flex-col rounded-[1.75rem] border border-line bg-panel p-7">
+        <div class="flex h-11 w-11 items-center justify-center rounded-full bg-ok/10 text-ok">
+          <iconify-icon icon="solar:cloud-sun-linear" class="text-xl"></iconify-icon>
+        </div>
+        <h3 class="mt-5 break-keep text-base font-semibold text-ink">우주기상 상태</h3>
+        <div class="mt-4 rounded-xl border border-line bg-bg/60 p-4">
+          <p class="flex items-center gap-2 text-sm font-semibold text-ok">
+            <iconify-icon icon="solar:cloud-sun-linear"></iconify-icon> 조용 — 일반적인 관측에 문제없어요
+          </p>
+          <p class="mt-2 text-xs text-muted">Kp 3.33 · NOAA 기준</p>
+        </div>
+        <p class="mt-3 break-keep text-sm leading-relaxed text-muted">전문 용어 없이 오늘 밤 관측 조건을 한 줄로 알려드려요.</p>
+
+        <div class="mt-5 flex flex-1 flex-col justify-center rounded-xl border border-line bg-bg/60 p-4">
+          <div class="flex items-center justify-between text-xs text-muted">
+            <span>Kp 지수 (0~9)</span>
+            <span class="font-semibold text-ink">3.33</span>
+          </div>
+          <div class="relative mt-2.5">
+            <div class="h-2 w-full overflow-hidden rounded-full bg-gradient-to-r from-ok via-warn to-alert"></div>
+            <div class="absolute -top-[3px] h-3.5 w-3.5 -translate-x-1/2 rounded-full border-2 border-panel bg-ink shadow" style="left:37%"></div>
+          </div>
+          <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 text-[11px] text-muted">
+            <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-ok"></span>0~3 조용</span>
+            <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-warn"></span>4~5 보통</span>
+            <span class="flex items-center gap-1.5"><span class="h-2 w-2 rounded-full bg-alert"></span>6+ 관측 주의</span>
+          </div>
+        </div>
+      </div>
+
+      <div data-reveal style="--i:2" class="reveal rounded-[1.75rem] border border-line bg-panel p-8 md:col-span-3">
+        <div class="grid gap-8 md:grid-cols-2 md:items-center">
+          <div>
+            <div class="flex h-11 w-11 items-center justify-center rounded-full bg-accent2/10 text-accent2">
+              <iconify-icon icon="solar:compass-linear" class="text-xl"></iconify-icon>
+            </div>
+            <h3 class="mt-5 break-keep text-lg font-semibold text-ink">하늘 방향 안내</h3>
+            <p class="mt-2 break-keep text-sm leading-relaxed text-muted">전문 용어 대신, 어디를 보면 되는지 3단계로 알려드려요.</p>
+
+            <div class="mt-5 grid grid-cols-3 gap-2 text-center">
+              <div class="rounded-xl border border-line bg-bg/60 p-3">
+                <iconify-icon icon="solar:map-point-linear" class="text-xl text-ok"></iconify-icon>
+                <p class="mt-2 break-keep text-[11px] text-muted">여기서 뜨기 시작해요</p>
+                <p class="mt-0.5 text-sm font-bold text-ink">서남서쪽</p>
+              </div>
+              <div class="rounded-xl border border-line bg-bg/60 p-3">
+                <iconify-icon icon="solar:arrow-up-linear" class="text-xl text-accent2"></iconify-icon>
+                <p class="mt-2 break-keep text-[11px] text-muted">가장 높이 뜰 때</p>
+                <p class="mt-0.5 text-sm font-bold text-ink">머리 위 68°</p>
+              </div>
+              <div class="rounded-xl border border-line bg-bg/60 p-3">
+                <iconify-icon icon="solar:map-point-linear" class="text-xl text-alert"></iconify-icon>
+                <p class="mt-2 break-keep text-[11px] text-muted">여기로 사라져요</p>
+                <p class="mt-0.5 text-sm font-bold text-ink">북동쪽</p>
+              </div>
+            </div>
+
+            <p class="mt-5 break-keep text-sm leading-relaxed text-muted">고개를 서남서쪽으로 돌린 뒤, 지구 위를 지나가는 위성을 따라 북동쪽으로 시선을 옮기면 돼요.</p>
+          </div>
+
+          <div class="relative h-56 overflow-hidden rounded-xl border border-line bg-bg md:h-72">
+            <div class="mini-earth" style="top:150px"></div>
+            <svg class="absolute inset-0 h-full w-full" viewBox="0 0 300 200" fill="none" aria-hidden="true">
+              <path d="M30,160 Q150,30 270,96" stroke="#4A90D9" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="1 7"/>
+              <circle cx="30" cy="160" r="6" fill="#3DDC84"/>
+              <circle cx="270" cy="96" r="6" fill="#FF4444"/>
+              <circle cx="150" cy="38" r="5" fill="#7B68EE"/>
+              <text x="30" y="182" fill="#E1E3EA" font-size="13" font-weight="600" text-anchor="middle" font-family="Pretendard">서남서</text>
+              <text x="270" y="120" fill="#E1E3EA" font-size="13" font-weight="600" text-anchor="middle" font-family="Pretendard">북동</text>
+              <text x="150" y="22" fill="#E1E3EA" font-size="13" font-weight="700" text-anchor="middle" font-family="Pretendard">68°</text>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── 사용 방법 ── -->
+<section id="how" class="relative bg-panel/40 py-20 md:py-28">
+  <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <div data-reveal class="reveal mx-auto max-w-2xl text-center">
+      <span class="inline-block rounded-full bg-cobalt/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.15em] text-cobalt">시작 방법</span>
+      <h2 class="mt-4 break-keep font-display text-3xl font-bold leading-snug tracking-tight text-ink md:text-4xl">3단계로 끝납니다</h2>
+    </div>
+
+    <div class="relative mt-16 grid grid-cols-1 gap-10 md:grid-cols-3">
+      <div class="pointer-events-none absolute left-0 right-0 top-8 hidden h-px bg-gradient-to-r from-transparent via-line to-transparent md:block"></div>
+
+      <div data-reveal style="--i:0" class="reveal flex flex-col items-center text-center md:items-start md:text-left">
+        <div class="relative z-10 flex h-16 w-16 items-center justify-center rounded-2xl border border-line bg-bg font-display text-xl font-bold text-cobalt">01</div>
+        <div class="mt-4 flex items-center gap-2">
+          <iconify-icon icon="solar:user-plus-linear" class="text-cobalt"></iconify-icon>
+          <h3 class="break-keep text-base font-semibold text-ink">회원가입</h3>
+        </div>
+        <p class="mt-2 break-keep text-sm leading-relaxed text-muted">아이디와 비밀번호만 입력하면 끝나요.</p>
+      </div>
+
+      <div data-reveal style="--i:1" class="reveal flex flex-col items-center text-center md:items-start md:text-left">
+        <div class="relative z-10 flex h-16 w-16 items-center justify-center rounded-2xl border border-line bg-bg font-display text-xl font-bold text-cobalt">02</div>
+        <div class="mt-4 flex items-center gap-2">
+          <iconify-icon icon="solar:map-point-linear" class="text-cobalt"></iconify-icon>
+          <h3 class="break-keep text-base font-semibold text-ink">관측지 설정</h3>
+        </div>
+        <p class="mt-2 break-keep text-sm leading-relaxed text-muted">도시를 고르면 자동으로 좌표가 설정돼요.</p>
+      </div>
+
+      <div data-reveal style="--i:2" class="reveal flex flex-col items-center text-center md:items-start md:text-left">
+        <div class="relative z-10 flex h-16 w-16 items-center justify-center rounded-2xl border border-line bg-bg font-display text-xl font-bold text-cobalt">03</div>
+        <div class="mt-4 flex items-center gap-2">
+          <iconify-icon icon="solar:calculator-minimalistic-linear" class="text-cobalt"></iconify-icon>
+          <h3 class="break-keep text-base font-semibold text-ink">통과 시간 확인</h3>
+        </div>
+        <p class="mt-2 break-keep text-sm leading-relaxed text-muted">위성을 선택하고 계산 버튼만 누르면 돼요.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section id="cta" class="relative overflow-hidden py-24 md:py-32">
+  <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 h-full bg-[radial-gradient(circle_at_50%_0%,rgba(74,144,217,0.16),transparent_60%)]"></div>
+  <div aria-hidden="true" class="pointer-events-none absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent2/10 blur-3xl [animation:floatSlow_12s_ease-in-out_infinite]"></div>
+
+  <div class="relative mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+    <h2 data-reveal style="--i:0" class="reveal break-keep font-display text-3xl font-bold leading-snug tracking-tight text-ink md:text-5xl">
+      오늘 밤 ISS가 지나가는 시간,<br>지금 확인해보세요
+    </h2>
+
+    <div data-reveal style="--i:1" class="reveal mt-10 flex justify-center">
+      <a href="index.html"
+         class="group inline-flex items-center gap-3 rounded-full bg-cobalt px-9 py-4 text-base font-semibold text-white transition-all duration-500 [transition-timing-function:cubic-bezier(.16,1,.3,1)] hover:scale-[1.02] hover:shadow-[0_0_45px_rgba(74,144,217,0.4)] active:scale-[0.98]">
+        무료로 시작하기
+        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 transition-transform duration-500 group-hover:translate-x-1">
+          <iconify-icon icon="solar:arrow-right-linear"></iconify-icon>
+        </span>
+      </a>
+    </div>
+
+    <p data-reveal style="--i:2" class="reveal mt-6 text-sm text-muted">데이터 출처: CelesTrak · NOAA SWPC</p>
+  </div>
+</section>
+
+</main>
+
+<!-- ── 푸터 ── -->
+<footer class="border-t border-line py-10">
+  <div class="mx-auto flex max-w-7xl flex-col items-center gap-4 px-4 sm:px-6 lg:flex-row lg:justify-between lg:px-8">
+    <p class="break-keep text-sm text-muted">SatPass KR · 충남대학교 웹프로그래밍 프로젝트 2026</p>
+    <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-muted">
+      <a href="https://celestrak.org" target="_blank" rel="noopener" class="transition-colors duration-300 hover:text-cobalt">CelesTrak</a>
+      <a href="https://www.swpc.noaa.gov" target="_blank" rel="noopener" class="transition-colors duration-300 hover:text-cobalt">NOAA SWPC</a>
+      <a href="index.html" class="transition-colors duration-300 hover:text-cobalt">서비스 바로가기</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const revealEls = document.querySelectorAll('[data-reveal]');
+    if (!('IntersectionObserver' in window)) {
+      revealEls.forEach(el => el.classList.add('is-visible'));
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          io.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -8% 0px' });
+    revealEls.forEach(el => io.observe(el));
+
+    // ── 히어로: 풀스크린 비디오 스크롤 스크럽 ──
+    // 히어로 섹션(220vh) 안에서 sticky된 영상 스테이지를 스크롤 진행률(0~1)로 환산해
+    // 영상은 축소·회전하며 물러나고, 그 자리에 헤드라인 텍스트가 페이드인한다.
+    // requestAnimationFrame + 선형보간(lerp)으로 값을 서서히 수렴시켜 뚝뚝 끊기지 않게 한다.
+    const heroSection   = document.getElementById('hero');
+    const heroVideo     = document.getElementById('heroVideo');
+    const heroOverlay   = document.getElementById('heroOverlay');
+    const heroTextGroup = document.getElementById('heroTextGroup');
+    const heroScrollCue = document.getElementById('heroScrollCue');
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (heroSection && heroVideo && heroTextGroup) {
+      let targetP = 0;   // 목표 진행률
+      let currentP = 0;  // 보간되어 실제로 적용되는 진행률
+      let rafId = null;
+
+      function computeProgress() {
+        const rect = heroSection.getBoundingClientRect();
+        const scrollable = rect.height - window.innerHeight; // 스크롤로 소모할 수 있는 구간(px)
+        targetP = scrollable > 0 ? Math.min(1, Math.max(0, -rect.top / scrollable)) : 0;
+      }
+
+      function applyProgress(p) {
+        const scale  = 1 - p * 0.18;   // 1.00 → 0.82: 영상이 서서히 줄어든다
+        const radius = p * 40;         // 0 → 40px: 줄어들수록 모서리가 둥글어진다
+        const tilt   = p * 5;          // 0deg → 5deg: 살짝 뒤로 기울며 "돌아가는" 느낌을 준다
+        heroVideo.style.transform    = `perspective(1400px) scale(${scale.toFixed(4)}) rotateX(${tilt.toFixed(2)}deg)`;
+        heroVideo.style.borderRadius = `${radius.toFixed(1)}px`;
+        if (heroOverlay) heroOverlay.style.opacity = (0.18 + p * 0.5).toFixed(3);
+
+        const textP = Math.min(1, p / 0.55); // 진행률 55% 지점에서 텍스트가 완전히 나타난다
+        heroTextGroup.style.opacity       = textP.toFixed(3);
+        heroTextGroup.style.transform     = `translateY(${((1 - textP) * 28).toFixed(2)}px)`;
+        heroTextGroup.style.pointerEvents = textP > 0.3 ? 'auto' : 'none';
+
+        if (heroScrollCue) {
+          const cueOpacity = Math.max(0, 1 - p * 8);
+          heroScrollCue.style.opacity = cueOpacity.toFixed(3);
+          heroScrollCue.style.pointerEvents = cueOpacity < 0.05 ? 'none' : 'auto';
+        }
+      }
+
+      function tick() {
+        const ease = prefersReducedMotion ? 1 : 0.12;
+        currentP += (targetP - currentP) * ease;
+        if (Math.abs(targetP - currentP) > 0.001) {
+          applyProgress(currentP);
+          rafId = requestAnimationFrame(tick);
+        } else {
+          currentP = targetP;
+          applyProgress(currentP);
+          rafId = null;
+        }
+      }
+
+      function requestTick() {
+        computeProgress();
+        if (rafId === null) rafId = requestAnimationFrame(tick);
+      }
+
+      window.addEventListener('scroll', requestTick, { passive: true });
+      window.addEventListener('resize', requestTick);
+      requestTick();
+    }
+  });
+</script>
+
+</body>
+</html>

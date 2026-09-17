@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SatPass KR — 오늘 밤 위성이 언제 보이나요?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/layout.css">
+</head>
+<body class="is-login-view">
+
+<header>
+  <div class="header-inner">
+    <div class="logo">SatPass KR <span>위성 관측 + 우주기상</span></div>
+    <div id="userBar">
+      <span id="loginState"></span>
+    </div>
+  </div>
+</header>
+
+<!-- 관측지 설정 모달 -->
+<div class="modal-bg" id="stationModal" role="dialog" aria-modal="true" aria-label="관측지 설정">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" id="stationClose" aria-label="닫기">×</button>
+    <h2>관측지 설정</h2>
+    <div class="form-group">
+      <label for="stLabel">관측지 이름</label>
+      <input id="stLabel" type="text" placeholder="예: 충남대 천문대" maxlength="30">
+    </div>
+
+    <div class="form-group">
+      <label>빠른 설정</label>
+      <div class="addr-row">
+        <button type="button" class="btn-sm" id="btnGeoLocate" style="flex:1">📍 현재 위치 사용</button>
+      </div>
+      <div class="city-presets" id="cityPresets"></div>
+      <div class="field-hint">도시를 고르거나 현재 위치를 사용하면 아래 위도·경도가 자동으로 채워져요. 직접 입력해도 됩니다.</div>
+    </div>
+
+    <div class="form-group">
+      <label for="stLat">위도 (°)</label>
+      <input id="stLat" type="number" step="0.0001" placeholder="예: 36.3504">
+    </div>
+    <div class="form-group">
+      <label for="stLon">경도 (°)</label>
+      <input id="stLon" type="number" step="0.0001" placeholder="예: 127.3845">
+    </div>
+    <div class="form-group">
+      <label for="stMinEl">최소 앙각 (°) <small style="color:var(--muted)">— 장애물 기준, 보통 10°</small></label>
+      <input id="stMinEl" type="number" min="0" max="80" value="10">
+    </div>
+    <button class="btn-primary" id="btnSaveStation">저장</button>
+    <div class="modal-err" id="stationErr"></div>
+  </div>
+</div>
+
+<main>
+  <div id="msg" class="msg" role="status"></div>
+
+  <!-- 비로그인 상태: 로그인/회원가입 -->
+  <div id="loginPrompt" class="login-prompt" style="display:none">
+    <div class="earth-bg" aria-hidden="true"></div>
+    <div class="auth-card">
+      <h1>오늘 밤, <span class="accent">ISS</span>가 지나가는<br>시간을 확인하세요</h1>
+      <p>위성 관측과 우주기상을 한국어로, 한 화면에서.</p>
+
+      <div class="tabs">
+        <button class="tab active" data-tab="login">로그인</button>
+        <button class="tab" data-tab="register">회원가입</button>
+      </div>
+
+      <div id="tabLogin">
+        <div class="form-group">
+          <label for="loginId">아이디</label>
+          <input id="loginId" type="text" autocomplete="username" placeholder="아이디 입력">
+        </div>
+        <div class="form-group">
+          <label for="loginPw">비밀번호</label>
+          <input id="loginPw" type="password" autocomplete="current-password" placeholder="비밀번호 입력">
+        </div>
+        <button class="btn-primary" id="btnLogin">로그인</button>
+        <div class="modal-err" id="loginErr"></div>
+      </div>
+
+      <div id="tabRegister" style="display:none">
+        <div class="form-group">
+          <label for="regId">아이디 <small style="color:var(--muted)">(영문·숫자·밑줄 3~20자)</small></label>
+          <input id="regId" type="text" autocomplete="username" placeholder="아이디 입력">
+        </div>
+        <div class="form-group">
+          <label for="regPw">비밀번호 <small style="color:var(--muted)">(6자 이상)</small></label>
+          <input id="regPw" type="password" autocomplete="new-password" placeholder="비밀번호 입력">
+        </div>
+        <div class="form-group">
+          <label for="regPw2">비밀번호 확인</label>
+          <input id="regPw2" type="password" autocomplete="new-password" placeholder="비밀번호 재입력">
+        </div>
+        <button class="btn-primary" id="btnRegister">가입하기</button>
+        <div class="modal-err" id="regErr"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 로그인 상태 -->
+  <div id="appArea" style="display:none">
+
+    <!-- 관측지 -->
+    <div class="station-bar" id="stationBar">
+      <div id="stationInfo" class="station-empty">관측지가 설정되지 않았습니다.</div>
+      <button class="btn-sm" id="btnEditStation">관측지 설정</button>
+    </div>
+
+    <!-- 우주기상 -->
+    <div class="wx-row">
+      <div class="wx-card wx-main">
+        <div class="k">오늘 밤 우주기상</div>
+        <div class="emoji" id="kpEmoji">—</div>
+        <div class="headline" id="kpHeadline">불러오는 중…</div>
+        <div class="desc" id="kpDesc"></div>
+        <div class="kp-small" id="kpNowSub"></div>
+      </div>
+      <div class="wx-card">
+        <div class="k">오늘 밤 관측 전망</div>
+        <div class="line hint" id="outlookLine">불러오는 중…</div>
+        <div class="sub" id="outlookSub"></div>
+      </div>
+      <div class="wx-card">
+        <div class="k">다음 통과</div>
+        <div class="line hint" id="nextPassLine">위성을 선택하고 계산해주세요</div>
+        <div class="sub" id="nextPassSub"></div>
+      </div>
+    </div>
+
+    <!-- 위성 선택 + 계산 -->
+    <div class="controls">
+      <div class="field">
+        <label for="satSelect">위성</label>
+        <select id="satSelect"><option>불러오는 중…</option></select>
+      </div>
+      <button class="btn-calc" id="btnCalc">통과 시간 계산</button>
+    </div>
+
+    <!-- 패스 테이블 -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>통과 시작 (KST)</th>
+            <th>최고 앙각</th>
+            <th>통과 종료</th>
+            <th>지속시간</th>
+            <th>방위 (시작 → 끝)</th>
+            <th>관측 조건</th>
+          </tr>
+        </thead>
+        <tbody id="passTbody">
+          <tr class="empty-row"><td colspan="6">위성을 고르고 계산 버튼을 누르세요.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 스카이 플롯 -->
+    <div class="sky-section" id="skySection" style="display:none">
+      <div class="sky-grid">
+        <div class="sky-info">
+          <div class="sky-icon">◎</div>
+          <h3 id="skyTitle">다음 패스 하늘 미리보기</h3>
+          <p class="sky-sub">전문 용어 대신, 어디를 보면 되는지 3단계로 알려드려요.</p>
+
+          <div class="sky-steps" id="skySteps">
+            <div class="sky-step">
+              <span class="sky-step-icon start">●</span>
+              <p class="sky-step-label">여기서 뜨기 시작해요</p>
+              <p class="sky-step-value" id="skyStepStart">-</p>
+            </div>
+            <div class="sky-step">
+              <span class="sky-step-icon peak">▲</span>
+              <p class="sky-step-label">가장 높이 뜰 때</p>
+              <p class="sky-step-value" id="skyStepPeak">-</p>
+            </div>
+            <div class="sky-step">
+              <span class="sky-step-icon end">●</span>
+              <p class="sky-step-label">여기로 사라져요</p>
+              <p class="sky-step-value" id="skyStepEnd">-</p>
+            </div>
+          </div>
+
+          <div class="sky-desc" id="skyDesc"></div>
+        </div>
+
+        <div class="sky-globe">
+          <div class="sky-globe-earth"></div>
+          <canvas id="skyCanvas" width="480" height="240"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /appArea -->
+</main>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/satellite.js@6.0.2/dist/satellite.min.js"></script>
+<script src="passcalc.js"></script>
+<script>
+$(function () {
+  'use strict';
+
+  // ── 유틸 ──
+  const fmtKst = d => d.toLocaleString('ko-KR', {
+    timeZone:'Asia/Seoul', month:'2-digit', day:'2-digit',
+    hour:'2-digit', minute:'2-digit', hour12:false
+  });
+  const dir16 = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+  const dir16Ko = ['북','북북동','북동','동북동','동','동남동','남동','남남동','남','남남서','남서','서남서','서','서북서','북서','북북서'];
+  const azName = az => dir16[Math.round(az / 22.5) % 16];
+  const azNameKo = az => dir16Ko[Math.round(az / 22.5) % 16];
+
+  // ── 도시 프리셋 (Kakao 지도 키 없이도 바로 쓸 수 있는 대안) ──
+  const CITY_PRESETS = [
+    { name:'서울', lat:37.5665, lon:126.9780 },
+    { name:'대전', lat:36.3504, lon:127.3845 },
+    { name:'부산', lat:35.1796, lon:129.0756 },
+    { name:'대구', lat:35.8714, lon:128.6014 },
+    { name:'광주', lat:35.1595, lon:126.8526 },
+    { name:'인천', lat:37.4563, lon:126.7052 },
+    { name:'제주', lat:33.4996, lon:126.5312 },
+  ];
+
+  function showMsg(type, text) { $('#msg').removeClass('error info').addClass(type).text(text); }
+  function clearMsg()          { $('#msg').removeClass('error info').text(''); }
+
+  function api(params) {
+    return $.ajax({ url:'api.php', data:params, dataType:'json', timeout:15000 })
+      .then(r => r.ok ? r : $.Deferred().reject(r.error || '오류'))
+      .catch((xhr) => {
+        const e = xhr.responseJSON?.error;
+        return $.Deferred().reject(e || `api.php 연결 실패 (HTTP ${xhr.status})`);
+      });
+  }
+
+  function authPost(data) {
+    return $.ajax({ url:'auth.php', method:'POST', data, dataType:'json', timeout:10000 });
+  }
+
+  function stationPost(data) {
+    return $.ajax({ url:'station.php', method:'POST', data, dataType:'json', timeout:10000 });
+  }
+
+  // ── 상태 ──
+  let currentUser = null;
+  let currentStation = null;  // {label, lat, lon, minEl}
+  let currentOmm = null;      // 스카이 플롯용: 마지막으로 계산한 위성의 궤도요소
+  let currentPasses = [];     // 스카이 플롯용: 마지막 계산 결과
+
+  // ── 모달 제어 ──
+  function openModal(id) { $('#' + id).addClass('open'); }
+  function closeModal(id) { $('#' + id).removeClass('open'); }
+
+  $('#stationClose').on('click', () => closeModal('stationModal'));
+  $('.modal-bg').on('click', function(e) {
+    if (e.target === this) closeModal(this.id);
+  });
+
+  // 탭 전환
+  $('.tab').on('click', function() {
+    const tab = $(this).data('tab');
+    $('.tab').removeClass('active');
+    $(this).addClass('active');
+    $('#tabLogin, #tabRegister').hide();
+    $('#tab' + tab.charAt(0).toUpperCase() + tab.slice(1)).show();
+    $('#loginErr, #regErr').text('');
+  });
+
+  // ── 로그인/회원가입 ──
+  // (로그인 폼은 이제 모달이 아니라 loginPrompt 안에 상시 노출되므로 열기/닫기 처리가 필요 없다)
+  $('#btnLogin').on('click', function() {
+    const id = $('#loginId').val().trim();
+    const pw = $('#loginPw').val();
+    if (!id || !pw) { $('#loginErr').text('아이디와 비밀번호를 입력하세요.'); return; }
+    $(this).prop('disabled', true).text('로그인 중…');
+    authPost({ action:'login', username:id, password:pw })
+      .done(r => {
+        if (r.ok) onLogin(r.user);
+        else $('#loginErr').text(r.error);
+      })
+      .fail((xhr) => {
+        const msg = xhr.responseJSON?.error || '서버 연결에 실패했습니다.';
+        $('#loginErr').text(msg);
+      })
+      .always(() => $(this).prop('disabled', false).text('로그인'));
+  });
+
+  $('#btnRegister').on('click', function() {
+    const id  = $('#regId').val().trim();
+    const pw  = $('#regPw').val();
+    const pw2 = $('#regPw2').val();
+    if (!id || !pw) { $('#regErr').text('아이디와 비밀번호를 입력하세요.'); return; }
+    if (pw !== pw2) { $('#regErr').text('비밀번호가 일치하지 않습니다.'); return; }
+    $(this).prop('disabled', true).text('가입 중…');
+    authPost({ action:'register', username:id, password:pw })
+      .done(r => {
+        if (r.ok) onLogin(r.user);
+        else $('#regErr').text(r.error);
+      })
+      .fail((xhr) => {
+        const msg = xhr.responseJSON?.error || '서버 연결에 실패했습니다.';
+        $('#regErr').text(msg);
+      })
+      .always(() => $(this).prop('disabled', false).text('가입하기'));
+  });
+
+  // 엔터키
+  $('#loginPw').on('keydown', e => { if (e.key === 'Enter') $('#btnLogin').trigger('click'); });
+  $('#regPw2').on('keydown',  e => { if (e.key === 'Enter') $('#btnRegister').trigger('click'); });
+
+  // ── 로그아웃 ──
+  $(document).on('click', '#btnLogout', function() {
+    authPost({ action:'logout' }).always(() => { onLogout(); });
+  });
+
+  // ── 관측지 설정 ──
+  // 도시 프리셋 버튼 렌더
+  const $cityPresets = $('#cityPresets').empty();
+  CITY_PRESETS.forEach(c => {
+    $('<button type="button" class="city-chip"></button>')
+      .text(c.name)
+      .on('click', () => {
+        $('#stLat').val(c.lat);
+        $('#stLon').val(c.lon);
+        $('#stLabel').val(c.name);
+        $('#stationErr').text('');
+      })
+      .appendTo($cityPresets);
+  });
+
+  // 현재 위치 사용(브라우저 Geolocation)
+  $('#btnGeoLocate').on('click', function () {
+    if (!navigator.geolocation) {
+      $('#stationErr').text('이 브라우저는 위치 확인 기능을 지원하지 않습니다.');
+      return;
+    }
+    const $btn = $(this).prop('disabled', true).text('위치 확인 중…');
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        $('#stLat').val(pos.coords.latitude.toFixed(4));
+        $('#stLon').val(pos.coords.longitude.toFixed(4));
+        $('#stLabel').val('현재 위치');
+        $('#stationErr').text('');
+        $btn.prop('disabled', false).text('📍 현재 위치 사용');
+      },
+      () => {
+        $('#stationErr').text('위치 확인에 실패했습니다. 브라우저 위치 권한을 확인하세요.');
+        $btn.prop('disabled', false).text('📍 현재 위치 사용');
+      },
+      { timeout: 8000 }
+    );
+  });
+
+  $('#btnEditStation').on('click', () => {
+    if (currentStation) {
+      $('#stLabel').val(currentStation.label);
+      $('#stLat').val(currentStation.lat);
+      $('#stLon').val(currentStation.lon);
+      $('#stMinEl').val(currentStation.minEl);
+    }
+    $('#stationErr').text('');
+    openModal('stationModal');
+  });
+
+  $('#btnSaveStation').on('click', function() {
+    const label = $('#stLabel').val().trim() || '내 관측지';
+    const lat   = parseFloat($('#stLat').val());
+    const lon   = parseFloat($('#stLon').val());
+    const minEl = parseFloat($('#stMinEl').val());
+    if (isNaN(lat) || Math.abs(lat) > 90)  { $('#stationErr').text('위도를 올바르게 입력하세요.'); return; }
+    if (isNaN(lon) || Math.abs(lon) > 180) { $('#stationErr').text('경도를 올바르게 입력하세요.'); return; }
+    if (isNaN(minEl) || minEl < 0 || minEl > 80) { $('#stationErr').text('최소 앙각을 올바르게 입력하세요.'); return; }
+
+    $(this).prop('disabled', true).text('저장 중…');
+    stationPost({ label, lat, lon, minEl })
+      .done(r => {
+        if (r.ok) { currentStation = r.station; renderStation(); closeModal('stationModal'); }
+        else $('#stationErr').text(r.error);
+      })
+      .fail(() => $('#stationErr').text('서버 연결에 실패했습니다.'))
+      .always(() => $(this).prop('disabled', false).text('저장'));
+  });
+
+  // ── 화면 전환 ──
+  function onLogin(user) {
+    currentUser = user;
+    $('#loginPrompt').hide();
+    $('#appArea').show();
+    document.body.classList.remove('is-login-view');
+    $('#loginState').html(
+      `<span class="username">${user.username}</span>
+       <button class="btn-ghost" id="btnLogout">로그아웃</button>`
+    );
+    loadStation();
+    loadWeather();
+    loadSatList();
+  }
+
+  function onLogout() {
+    currentUser = null; currentStation = null;
+    currentOmm = null; currentPasses = [];
+    $('#appArea').hide();
+    $('#loginPrompt').show();
+    document.body.classList.add('is-login-view');
+    // 로그인 폼이 상시 노출되므로, 직전에 회원가입 탭에 있었더라도 항상 로그인 탭부터 보여준다
+    $('.tab').removeClass('active');
+    $('.tab[data-tab="login"]').addClass('active');
+    $('#tabRegister').hide();
+    $('#tabLogin').show();
+    $('#loginErr, #regErr').text('');
+    $('#loginState').empty(); // 로그인 폼이 이미 화면에 상시 노출되므로 헤더에 별도 버튼을 두지 않는다
+    $('#passTbody').html('<tr class="empty-row"><td colspan="6">위성을 고르고 계산 버튼을 누르세요.</td></tr>');
+    $('#skySection').hide();
+    $('#outlookLine').addClass('hint').text('불러오는 중…');
+    $('#outlookSub').text('');
+    $('#nextPassLine').addClass('hint').text('위성을 선택하고 계산해주세요');
+    $('#nextPassSub').text('');
+  }
+
+  function renderStation() {
+    if (!currentStation) {
+      $('#stationInfo').html('<span class="station-empty">관측지가 설정되지 않았습니다.</span>');
+    } else {
+      const s = currentStation;
+      $('#stationInfo').html(
+        `<span class="label">${s.label}</span>
+         <span class="coords">위도 ${s.lat}° · 경도 ${s.lon}° · 최소 앙각 ${s.minEl}°</span>`
+      );
+    }
+  }
+
+  function loadStation() {
+    $.ajax({ url:'station.php', dataType:'json', timeout:10000 })
+      .done(r => { if (r.ok && r.station) currentStation = r.station; renderStation(); });
+  }
+
+  // ── 우주기상: Kp → 일반인이 이해할 수 있는 메시지 ──
+  function kpMessage(kp) {
+    if (kp >= 9)  return { emoji:'🚨', headline:'극심한 폭풍',   desc:'심각한 통신 장애가 있을 수 있어요.' };
+    if (kp >= 7)  return { emoji:'🔴', headline:'강한 폭풍',     desc:'GPS·통신 장애 가능. 관측에 영향이 있을 수 있어요.' };
+    if (kp >= 5)  return { emoji:'⚠️', headline:'활발',         desc:'지자기 폭풍 가능성이 있어요. 고위도에서는 오로라가 보일 수도 있어요.' };
+    if (kp >= 2)  return { emoji:'🌤️', headline:'조용',         desc:'일반적인 관측에 문제없어요.' };
+    return               { emoji:'☀️', headline:'매우 조용',     desc:'지자기 활동이 거의 없어요. 위성 관측에 아주 좋은 조건이에요.' };
+  }
+
+  // 24시간 최대 예보 Kp → "오늘 밤 관측 전망" 카드 문구
+  function outlookMessage(maxKp) {
+    if (maxKp >= 7) return '🔴 나쁨 — 강한 폭풍 예보, 관측 영향 가능';
+    if (maxKp >= 5) return '⚠️ 주의 — 약한 지자기 폭풍 예보';
+    return '✅ 관측 좋음 — 폭풍 예보 없음';
+  }
+
+  function loadWeather() {
+    const kpReq = api({ src:'kp' }).then(r=>r, e=>({ failed:e }));
+    const fcReq = api({ src:'kp_forecast' }).then(r=>r, e=>({ failed:e }));
+    $.when(kpReq, fcReq).done((kp, fc) => {
+      if (!kp.failed && kp.data?.length) {
+        const last = kp.data[kp.data.length - 1];
+        const kpV  = Number(last.kp);
+        const m = kpMessage(kpV);
+        $('#kpEmoji').text(m.emoji);
+        $('#kpHeadline').text(m.headline);
+        $('#kpDesc').text(m.desc);
+        $('#kpNowSub').html(
+          `Kp ${kpV.toFixed(2)} (${PassCalc.kpToG(kpV)}) · NOAA 기준` +
+          (kp.stale ? ' · <span class="stale-note">이전 캐시 데이터</span>' : '')
+        );
+      }
+      let in24 = [];
+      if (!fc.failed && fc.data?.length) {
+        const now = new Date();
+        in24 = fc.data.filter(r => {
+          const t = PassCalc.parseUtc(r.time_tag);
+          return t && t >= new Date(+now - 3*3600000) && t <= new Date(+now + 24*3600000);
+        });
+      }
+      if (in24.length) {
+        const maxKp = Math.max(...in24.map(r => Number(r.kp)));
+        $('#outlookLine').removeClass('hint').text(outlookMessage(maxKp));
+        $('#outlookSub').text('24시간 예보 기준 · NOAA');
+      } else {
+        $('#outlookLine').addClass('hint').text('예보 정보 없음');
+        $('#outlookSub').text('');
+      }
+    });
+  }
+
+  // ── 위성 목록 ──
+  function loadSatList() {
+    api({ src:'sats' }).done(r => {
+      $('#satSelect').empty();
+      r.data.forEach(s => $('<option>').val(s.catnr).text(s.name).appendTo('#satSelect'));
+    });
+  }
+
+  // ── 스카이 플롯 ──
+  function selectPass(idx) {
+    if (!currentPasses.length || !currentPasses[idx] || !currentOmm || !currentStation) return;
+    $('#passTbody tr').removeClass('sel');
+    $(`#passTbody tr[data-idx="${idx}"]`).addClass('sel');
+    const p = currentPasses[idx];
+    // 캔버스가 실제 크기를 읽을 수 있도록, 그리기 전에 먼저 화면에 보이게 한다
+    // (숨겨진 상태에서 그리면 clientWidth가 0이 되어 크기 계산이 어긋난다)
+    $('#skySection').show();
+    drawSkyPlot(p);
+
+    const startDir = azNameKo(p.aosAz);
+    const endDir   = azNameKo(p.losAz);
+    $('#skyTitle').text(idx === 0 ? '다음 패스 하늘 미리보기' : `${fmtKst(p.aos)} 패스 하늘 미리보기`);
+    $('#skyDesc').html(
+      `<b>${startDir}쪽</b> 하늘에서 시작해서 <b>${endDir}쪽</b>으로 지나갑니다.<br>` +
+      `가장 높이 뜰 때(최고점) 앙각은 <b>${p.maxEl.toFixed(0)}°</b>이고,<br>` +
+      `지속 시간은 약 <b>${p.durationMin.toFixed(1)}분</b>입니다.`
+    );
+    $('#skyStepStart').text(startDir + '쪽');
+    $('#skyStepPeak').text('머리 위 ' + p.maxEl.toFixed(0) + '°');
+    $('#skyStepEnd').text(endDir + '쪽');
+  }
+
+  function drawSkyPlot(p) {
+    const canvas = document.getElementById('skyCanvas');
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth;
+    const cssH = canvas.clientHeight;
+    // #skySection이 아직 display:none인 상태(예: 재계산 직후 hide() 직후)에서 호출되면
+    // clientWidth/Height가 0이 되어, 예전 canvas.width로 폴백하던 방식은 호출할 때마다
+    // dpr배씩 누적 확대되는 버그(글자가 계속 작아지고 멀어지다 사라짐)를 일으켰다.
+    // 보이지 않는 상태라면 그리지 않고 넘어간다.
+    if (!cssW || !cssH) return;
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const W = cssW, H = cssH;
+
+    ctx.clearRect(0, 0, W, H);
+
+    // 시작/끝은 패스마다 흔들리지 않는 고정 자리에 그린다(지구본이 시작되는 130px보다
+    // 한참 위, 어두운 하늘 영역). 가운데(최고점)만 실제 앙각에 비례해 높이가 달라져서,
+    // 얼마나 높이 뜨는 패스인지 한눈에 보이게 한다 — 앙각이 낮을수록 시작/끝과 가까워지고,
+    // 90°(천정)에 가까울수록 더 높이 올라간다.
+    const padX = 46;
+    const dotY = 84;                 // 시작/끝 점 높이(고정)
+    const PEAK_Y_AT_0 = 84;          // 앙각 0°일 때 최고점 높이(시작/끝과 같은 선)
+    const PEAK_Y_AT_90 = 38;         // 앙각 90°(천정)일 때 최고점 높이(가장 위)
+    const elRatio = Math.min(Math.max(p.maxEl, 0), 90) / 90;
+    const peakDotY = PEAK_Y_AT_0 - elRatio * (PEAK_Y_AT_0 - PEAK_Y_AT_90);
+    const xStart = padX, xEnd = W - padX, xPeak = W / 2;
+
+    // 점을 직선 두 구간(시작→최고점→최고점→끝)으로 잇는다
+    ctx.strokeStyle = '#4A90D9';
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.setLineDash([1, 7]);
+    ctx.beginPath();
+    ctx.moveTo(xStart, dotY);
+    ctx.lineTo(xPeak, peakDotY);
+    ctx.lineTo(xEnd, dotY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.font = '600 13px "IBM Plex Sans KR",sans-serif';
+    ctx.textAlign = 'center';
+
+    // 지구본 위(밝은 영역)에서도, 어두운 하늘 배경 위에서도 또렷이 읽히도록
+    // 텍스트 뒤에 어두운 외곽선을 먼저 그린다 + 점 색상과 맞춰 어떤 점의 라벨인지 알 수 있게 한다
+    function labelText(text, x, dotY, color) {
+      const y = dotY - 20;
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(4,6,16,.8)';
+      ctx.strokeText(text, x, y);
+      ctx.fillStyle = color;
+      ctx.fillText(text, x, y);
+    }
+    function dot(x, y, r, color) {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    }
+
+    // 시작(AOS) — 초록
+    dot(xStart, dotY, 6, '#3DDC84');
+    labelText(azNameKo(p.aosAz), xStart, dotY, '#3DDC84');
+
+    // 끝(LOS) — 빨강
+    dot(xEnd, dotY, 6, '#FF4444');
+    labelText(azNameKo(p.losAz), xEnd, dotY, '#FF4444');
+
+    // 최고점(TCA) — 보라
+    dot(xPeak, peakDotY, 5, '#7B68EE');
+    labelText(`${p.maxEl.toFixed(0)}°`, xPeak, peakDotY, '#7B68EE');
+  }
+
+  // ── 패스 계산 ──
+  $('#btnCalc').on('click', function() {
+    if (!currentStation) { showMsg('error', '먼저 관측지를 설정하세요.'); return; }
+    const catnr = $('#satSelect').val();
+    clearMsg();
+    $(this).prop('disabled', true).text('계산 중…');
+
+    const gpReq = api({ src:'gp', catnr });
+    const fcReq = api({ src:'kp_forecast' }).then(r=>r, e=>({ failed:e }));
+
+    $.when(gpReq, fcReq).done((gp, fc) => {
+      const now = new Date();
+      const omm = gp.data[0];
+
+      // 궤도요소 나이 (관측 조건 판정에 사용)
+      const age = PassCalc.epochAgeHours(omm, now);
+
+      const forecast = fc.failed ? [] : fc.data;
+      const s = currentStation;
+
+      // 관측 조건 레이블 (Kp → 좋음/보통/나쁨) + 한 줄 설명
+      function condLabel(kp) {
+        if (kp === null) return { label:'알 수 없음', cls:'', desc:'' };
+        if (kp >= 7) return { label:'나쁨', cls:'나쁨', desc:'지자기 폭풍 중, 관측 영향 가능' };
+        if (kp >= 5) return { label:'보통', cls:'보통', desc:'약간의 지자기 활동, 대부분 관측 가능' };
+        return { label:'좋음', cls:'좋음', desc:'지자기 조용, 관측에 지장 없어요' };
+      }
+
+      const passes = PassCalc.predictPasses({
+        sat: satellite, omm,
+        lat: s.lat, lon: s.lon, altKm: 0.05,
+        minEl: s.minEl, start: now, hours: 24, stepSec: 20
+      });
+
+      // 스카이 플롯에서 다시 쓸 수 있도록 저장 (currentStation은 이미 전역에 있으므로 그대로 참조)
+      currentOmm = omm;
+      currentPasses = passes;
+      $('#skySection').hide();
+
+      const $tb = $('#passTbody').empty();
+      if (!passes.length) {
+        $tb.append(`<tr class="empty-row"><td colspan="6">24시간 안에 최소 앙각 ${s.minEl}° 이상 통과하는 패스가 없습니다.</td></tr>`);
+        $('#nextPassLine').addClass('hint').text('24시간 내 통과 없음');
+        $('#nextPassSub').text('');
+        return;
+      }
+
+      passes.forEach((p, i) => {
+        const a    = PassCalc.assessPass(p, forecast, age);
+        const cond = condLabel(a.kp);
+        const pct  = Math.min(100, (p.maxEl / 90) * 100).toFixed(0);
+        const note = a.notes.filter(n => !n.includes('G')).join(' · ') || '';
+        $tb.append(`
+          <tr data-idx="${i}">
+            <td>${fmtKst(p.aos)}</td>
+            <td>
+              <div class="gauge">
+                <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
+                ${p.maxEl.toFixed(1)}°
+              </div>
+            </td>
+            <td>${fmtKst(p.los)}</td>
+            <td>${p.durationMin.toFixed(1)}분</td>
+            <td>${azName(p.aosAz)} → ${azName(p.losAz)}</td>
+            <td>
+              ${cond.cls ? `<span class="badge ${cond.cls}">${cond.label}</span>` : cond.label}
+              ${cond.desc ? `<span class="note">${cond.desc}</span>` : ''}
+              ${note ? `<span class="note">${note}</span>` : ''}
+            </td>
+          </tr>`);
+      });
+
+      // "다음 통과" 카드: 현재 시각 이후 첫 번째 패스
+      const nextPass = passes.find(p => p.aos.getTime() >= now.getTime()) || passes[0];
+      if (nextPass) {
+        const minsLeft = Math.max(0, Math.round((nextPass.aos.getTime() - now.getTime()) / 60000));
+        $('#nextPassLine').removeClass('hint').text(fmtKst(nextPass.aos));
+        $('#nextPassSub').text(`약 ${minsLeft}분 후 · 최고 ${nextPass.maxEl.toFixed(1)}°`);
+      }
+
+      // 다음 패스(가장 가까운 패스)를 기본으로 스카이 플롯에 표시
+      selectPass(0);
+
+      if (fc.failed) showMsg('info', `우주기상 예보를 받지 못해 관측 조건은 표시되지 않습니다.`);
+    })
+    .fail(err => showMsg('error', `궤도요소를 받지 못했습니다: ${err}`))
+    .always(() => $(this).prop('disabled', false).text('통과 시간 계산'));
+  });
+
+  // ── 패스 테이블 행 클릭 → 스카이 플롯 ──
+  $(document).on('click', '#passTbody tr[data-idx]', function () {
+    selectPass(Number($(this).data('idx')));
+  });
+
+  // ── 초기화: 세션 확인 ──
+  // 비로그인이면 200+{ok:false} 또는 401 둘 다 가능 — 둘 다 비로그인으로 처리
+  $.ajax({ url:'auth.php?action=me', dataType:'json', timeout:5000 })
+    .done(r => {
+      if (r.ok && r.user) onLogin(r.user);
+      else                onLogout();
+    })
+    .fail((xhr) => {
+      // 401 = 세션 없음(정상), 그 외 = 실제 오류
+      if (xhr.status === 401) {
+        try {
+          const r = JSON.parse(xhr.responseText);
+          if (!r.ok && r.user === null) { onLogout(); return; }
+        } catch(_) {}
+      }
+      onLogout(); // 어떤 오류든 비로그인 상태로 처리
+    });
+
+});
+</script>
+</body>
+</html>

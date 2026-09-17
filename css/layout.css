@@ -1,0 +1,43 @@
+/**
+ * layout.css — SatPass KR 레이아웃
+ * header, main, .wx-row 그리드, 반응형 미디어쿼리
+ */
+
+/* ── 헤더 ── */
+header{background:
+         radial-gradient(1px 1px at 12% 30%, rgba(255,255,255,.55), transparent 60%),
+         radial-gradient(1px 1px at 28% 70%, rgba(255,255,255,.35), transparent 60%),
+         radial-gradient(1.5px 1.5px at 52% 20%, rgba(255,255,255,.45), transparent 60%),
+         radial-gradient(1px 1px at 68% 60%, rgba(255,255,255,.3), transparent 60%),
+         radial-gradient(1px 1px at 85% 35%, rgba(255,255,255,.4), transparent 60%),
+         radial-gradient(1.5px 1.5px at 95% 75%, rgba(255,255,255,.3), transparent 60%),
+         linear-gradient(180deg, #0F1224, var(--bg));
+       color:#fff;padding:0 20px;border-bottom:1px solid var(--line);
+       transition:background .35s var(--ease), border-color .35s var(--ease)}
+
+/* 비로그인 화면: 배경 이미지가 헤더 뒤로 자연스럽게 이어지도록 헤더를 투명하게 처리 */
+body.is-login-view header{
+  background:transparent;
+  border-bottom-color:transparent;
+}
+
+.header-inner{max-width:1000px;margin:0 auto;height:56px;display:flex;align-items:center;gap:12px}
+.logo{font-size:1.1rem;font-weight:600;letter-spacing:-.3px;flex:1}
+.logo span{opacity:.65;font-weight:400;font-size:.9rem;margin-left:8px}
+#userBar{display:flex;align-items:center;gap:10px;font-size:.9rem}
+#userBar .username{font-weight:500}
+
+/* ── 레이아웃 ── */
+main{max-width:1000px;margin:0 auto;padding:28px 20px 64px}
+
+/* ── 우주기상 카드 그리드 ── */
+.wx-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+
+/* ── 반응형 ── */
+@media(max-width:680px){
+  .wx-row{grid-template-columns:1fr 1fr}
+  .controls{flex-direction:column;align-items:stretch}
+  .btn-calc{width:100%}
+  .sky-grid{flex-direction:column}
+  .sky-globe{width:100%}
+}

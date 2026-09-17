@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SatPass KR — 관리자 상태</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0D17; --panel:#141829; --line:#1E2340; --ink:#E1E3EA; --muted:#8B8FA3;
+  --cobalt:#4A90D9; --ok:#3DDC84; --ok-bg:rgba(61,220,132,.14);
+  --warn:#FFB800; --warn-bg:rgba(255,184,0,.14); --alert:#FF4444; --alert-bg:rgba(255,68,68,.14);
+  --radius:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+     color:var(--ink);background:var(--bg);line-height:1.6;min-height:100vh}
+header{background:linear-gradient(180deg,#0F1224,var(--bg));border-bottom:1px solid var(--line);padding:0 20px}
+.header-inner{max-width:900px;margin:0 auto;height:56px;display:flex;align-items:center;gap:12px}
+.logo{font-size:1.1rem;font-weight:600}
+.logo span{opacity:.65;font-weight:400;font-size:.9rem;margin-left:8px}
+main{max-width:900px;margin:0 auto;padding:28px 20px 64px}
+.toolbar{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.toolbar a{color:var(--cobalt);text-decoration:none;font-size:.9rem}
+.toolbar a:hover{text-decoration:underline}
+.btn-sm{padding:6px 14px;border:1px solid var(--line);border-radius:6px;background:var(--panel);
+        color:var(--ink);cursor:pointer;font:inherit;font-size:.85rem}
+.btn-sm:hover{border-color:var(--cobalt)}
+.auto-note{color:var(--muted);font-size:.82rem;margin-left:auto}
+.table-wrap{overflow-x:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius)}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.78rem;font-weight:600;color:var(--muted);background:var(--panel)}
+tr:last-child td{border-bottom:none}
+td.wrap{white-space:normal;max-width:360px}
+.badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:.78rem;font-weight:600}
+.badge.ok{background:var(--ok-bg);color:var(--ok)}
+.badge.warn{background:var(--warn-bg);color:var(--warn)}
+.badge.err{background:var(--alert-bg);color:var(--alert)}
+.muted{color:var(--muted)}
+.empty{color:var(--muted);text-align:center;padding:40px}
+.msg{padding:10px 14px;border-radius:6px;margin-bottom:14px;background:var(--alert-bg);color:var(--alert);display:none;font-size:.9rem}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo">SatPass KR <span>관리자 · 캐시/수집 상태</span></div>
+  </div>
+</header>
+
+<main>
+  <div id="msg" class="msg"></div>
+  <div class="toolbar">
+    <button class="btn-sm" id="btnRefresh">새로고침</button>
+    <a href="index.html">← 메인으로</a>
+    <span class="auto-note" id="autoNote"></span>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>키</th>
+          <th>마지막 수집(UTC)</th>
+          <th>HTTP 상태</th>
+          <th>상태</th>
+          <th>오류 메시지</th>
+          <th>재요청 금지(쿨다운)</th>
+        </tr>
+      </thead>
+      <tbody id="statusBody">
+        <tr><td colspan="6" class="empty">불러오는 중…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script>
+$(function () {
+  'use strict';
+
+  function fmtTs(ts) {
+    if (!ts) return '—';
+    return new Date(ts * 1000).toISOString().replace('T', ' ').replace(/\.\d+Z$/, 'Z');
+  }
+
+  function statusBadge(item) {
+    const now = Date.now() / 1000;
+    if (item.blocked_until && item.blocked_until > now) {
+      return '<span class="badge warn">쿨다운 중</span>';
+    }
+    if (item.last_error) {
+      return '<span class="badge err">최근 실패</span>';
+    }
+    if (item.last_status === 200) {
+      return '<span class="badge ok">정상</span>';
+    }
+    return '<span class="badge muted">알 수 없음</span>';
+  }
+
+  function load() {
+    $('#msg').hide();
+    $.ajax({ url: 'api.php', data: { src: 'status' }, dataType: 'json', timeout: 10000 })
+      .done(r => {
+        const $tb = $('#statusBody').empty();
+        if (!r.ok || !r.data || !r.data.length) {
+          $tb.append('<tr><td colspan="6" class="empty">아직 수집된 데이터가 없습니다.</td></tr>');
+          return;
+        }
+        r.data.forEach(item => {
+          $tb.append(`
+            <tr>
+              <td>${item.key ?? '—'}</td>
+              <td>${fmtTs(item.fetched_at)}</td>
+              <td>${item.last_status ?? '—'}</td>
+              <td>${statusBadge(item)}</td>
+              <td class="wrap muted">${item.last_error ?? '—'}</td>
+              <td class="muted">${item.blocked_until ? fmtTs(item.blocked_until) : '—'}</td>
+            </tr>`);
+        });
+        $('#autoNote').text('마지막 갱신: ' + new Date().toLocaleTimeString('ko-KR'));
+      })
+      .fail(() => {
+        $('#msg').text('api.php에서 상태를 받아오지 못했습니다.').show();
+        $('#statusBody').html('<tr><td colspan="6" class="empty">불러오기 실패</td></tr>');
+      });
+  }
+
+  $('#btnRefresh').on('click', load);
+  load();
+});
+</script>
+</body>
+</html>
