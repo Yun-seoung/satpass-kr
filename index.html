@@ -220,6 +220,18 @@
           </div>
         </div>
       </div>
+
+      <!-- 이번 주 베스트 패스 TOP 3 (통과 계산 후 채워진다) -->
+      <section class="best-section" id="bestSection" style="display:none">
+        <h3 class="best-h">⭐ 이번 주 베스트 패스 TOP 3</h3>
+
+        <div class="best-grid" id="bestGrid"></div>
+
+        <p class="best-note" id="bestNote" style="display:none">
+          1분 간격으로 계산한 참고용 추천이며, 정확한 시각은 위 목록을 확인하세요
+        </p>
+      </section>
+
     </div><!-- /mainTabSat -->
 
     <div class="main-tab-panel" id="mainTabMoon" style="display:none">
@@ -538,7 +550,7 @@ $(function () {
   function onLogout() {
     currentUser = null; currentStation = null;
     currentOmm = null; currentPasses = []; currentSatName = '';
-    issOmm = null; stopIssTimer(); $('#issMapSection').hide();
+    issOmm = null; stopIssTimer(); $('#issMapSection').hide(); $('#bestSection').hide();
     $('#appArea').hide();
     $('#loginPrompt').show();
     document.body.classList.add('is-login-view');
@@ -962,6 +974,91 @@ $(function () {
   // 현재 시각 마커와 구간 판정이 시간에 따라 달라지므로 1분마다 다시 그린다.
   setInterval(renderSun, 60000);
 
+  // ── 이번 주 베스트 패스 TOP 3 ──
+  // 24시간 계산과 같은 궤도요소·Kp 예보로 7일치를 한 번 더 돌려 최고 앙각 상위 3개를 뽑는다.
+  // 7일치는 stepSec을 넓게 잡아 계산량을 줄인다(추천 용도라 분 단위 오차는 허용).
+  const BEST_HOURS = 24 * 7;
+  const BEST_STEP_SEC = 60;
+  const BEST_COUNT = 3;
+  const BEST_RANK_MARK = ['①', '②', '③'];
+
+  // "09. 21. (월) 19:34"
+  function fmtBestWhen(d) {
+    const parts = new Intl.DateTimeFormat('ko-KR', {
+      timeZone:'Asia/Seoul', month:'2-digit', day:'2-digit', weekday:'short',
+      hour:'2-digit', minute:'2-digit', hour12:false
+    }).formatToParts(d);
+    const get = type => parts.find(x => x.type === type).value;
+    return `${get('month')}. ${get('day')}. (${get('weekday')}) ${get('hour')}:${get('minute')}`;
+  }
+
+  function bestElDesc(el) {
+    if (el >= 60) return '머리 위로 높이 지나가요 — 가장 잘 보여요';
+    if (el >= 30) return '하늘 중간을 지나가요 — 잘 보여요';
+    return '지평선 근처를 지나가요 — 장애물 주의';
+  }
+
+  function bestCardHtml(p, i, ctx, todayStart) {
+    const assessed = PassCalc.assessPass(p, ctx.forecast, ctx.age);
+    const cond = ctx.condLabel(assessed.kp);
+    const isToday = kstMidnight(p.aos).getTime() === todayStart;
+    const isTop = i === 0;
+
+    return `
+      <article class="best-card${isTop ? ' is-top' : ''}">
+        <div class="best-head">
+          <span class="best-rank${isTop ? ' is-top' : ''}">${BEST_RANK_MARK[i]}</span>
+          <span class="best-when">${fmtBestWhen(p.aos)}</span>
+          ${isToday ? '<span class="best-today">오늘</span>' : ''}
+        </div>
+
+        ${isTop ? '<p class="best-crown">이번 주 최고의 관측 기회</p>' : ''}
+
+        <p class="best-el">${p.maxEl.toFixed(1)}°</p>
+        <p class="best-el-desc">${bestElDesc(p.maxEl)}</p>
+
+        <dl class="best-meta">
+          <div><dt>지속시간</dt><dd>약 ${p.durationMin.toFixed(1)}분</dd></div>
+          <div><dt>방위</dt><dd>${azName(p.aosAz)} → ${azName(p.losAz)}</dd></div>
+        </dl>
+
+        ${cond.cls ? `<span class="badge ${cond.cls}">${cond.label}</span>`
+                   : `<span class="best-cond-plain">${cond.label}</span>`}
+      </article>`;
+  }
+
+  // ctx: { omm, station, forecast, age, condLabel } — 24시간 계산이 이미 만들어 둔 값을 그대로 받는다.
+  function renderBestPasses(ctx) {
+    $('#bestSection').show();
+    $('#bestNote').hide();
+    $('#bestGrid').html('<p class="best-loading">7일치 패스 계산 중…</p>');
+
+    // 7일치 계산이 1~2초 걸릴 수 있어, 로딩 문구가 먼저 그려지도록 다음 틱으로 넘긴다.
+    setTimeout(() => {
+      let passes;
+      try {
+        passes = PassCalc.predictPasses({
+          sat: satellite, omm: ctx.omm,
+          lat: ctx.station.lat, lon: ctx.station.lon, altKm: 0.05,
+          minEl: ctx.station.minEl,
+          start: new Date(), hours: BEST_HOURS, stepSec: BEST_STEP_SEC
+        });
+      } catch (err) {
+        $('#bestSection').hide();
+        return;
+      }
+
+      if (!passes || !passes.length) { $('#bestSection').hide(); return; }
+
+      // 최고 앙각 내림차순 상위 3개 (3개 미만이면 있는 것만)
+      const top = passes.slice().sort((a, b) => b.maxEl - a.maxEl).slice(0, BEST_COUNT);
+      const todayStart = kstMidnight(new Date()).getTime();
+
+      $('#bestGrid').html(top.map((p, i) => bestCardHtml(p, i, ctx, todayStart)).join(''));
+      $('#bestNote').show();
+    }, 0);
+  }
+
   // ── ISS 실시간 위치 지도 (Leaflet) ──
   // 통과 계산에서 이미 받아 둔 ISS 궤도요소를 재사용한다 (api.php를 다시 부르지 않는다).
   const ISS_CATNR = '25544';
@@ -1254,6 +1351,8 @@ $(function () {
       renderSun(); // 일출·일몰 탭 타임라인에 패스 마커를 반영
       if (catnr === ISS_CATNR) issOmm = omm; // ISS 지도는 이 궤도요소를 계속 재사용한다
       issRefresh();
+      // 같은 궤도요소·Kp 예보로 7일치 베스트 패스를 이어서 계산한다
+      renderBestPasses({ omm, station: s, forecast, age, condLabel });
       $('#skySection').hide();
 
       const $tb = $('#passTbody').empty();

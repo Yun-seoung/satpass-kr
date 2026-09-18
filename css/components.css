@@ -248,6 +248,50 @@ td .note{display:block}
   .sun-prime-grid{grid-template-columns:1fr}
 }
 
+/* ── 이번 주 베스트 패스 TOP 3 ── */
+.best-section{margin-top:24px}
+.best-h{font-size:1rem;font-weight:600;margin-bottom:12px}
+
+.best-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;align-items:start}
+.best-loading{grid-column:1/-1;background:var(--panel);border:1px solid var(--line);
+              border-radius:var(--radius);padding:28px;text-align:center;
+              font-size:.9rem;color:var(--muted)}
+
+.best-card{background:#141829;border:1px solid #1E2340;border-radius:var(--radius);
+           padding:18px 16px}
+/* 1위는 금색 테두리 + 살짝 크게 */
+.best-card.is-top{border-color:#FFB800;padding:22px 18px;
+                  box-shadow:0 0 22px rgba(255,184,0,.1)}
+
+.best-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.best-rank{flex-shrink:0;width:24px;height:24px;border-radius:50%;
+           display:inline-flex;align-items:center;justify-content:center;
+           font-size:.85rem;font-weight:700;color:#0B0D17;background:#8B8FA3}
+.best-rank.is-top{background:#FFB800}
+.best-when{font-size:.86rem;color:var(--muted)}
+.best-today{font-size:.72rem;font-weight:600;color:#0B0D17;background:#FFB800;
+            border-radius:999px;padding:2px 8px}
+
+.best-crown{font-size:.8rem;font-weight:600;color:#FFB800;margin-bottom:8px}
+
+.best-el{font-size:2rem;font-weight:700;color:#fff;line-height:1.15}
+.best-el-desc{font-size:.8rem;color:#8B8FA3;margin-top:4px;word-break:keep-all}
+
+.best-meta{display:flex;flex-wrap:wrap;gap:6px 20px;margin:14px 0 12px;
+           padding-top:12px;border-top:1px solid var(--line)}
+.best-meta div{display:flex;flex-direction:column;gap:2px}
+.best-meta dt{font-size:.74rem;color:var(--muted)}
+.best-meta dd{font-size:.9rem;font-weight:600}
+
+.best-cond-plain{font-size:.8rem;color:var(--muted)}
+
+.best-note{margin-top:12px;font-size:.76rem;color:var(--muted);word-break:keep-all}
+
+@media (max-width:760px){
+  .best-grid{grid-template-columns:1fr}
+  .best-card.is-top{padding:18px 16px}
+}
+
 /* ── ISS 실시간 위치 지도 ── */
 .iss-map-section{margin-top:20px}
 .iss-map-h{font-size:1rem;font-weight:600;margin-bottom:10px}
