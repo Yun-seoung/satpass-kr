@@ -6,3 +6,4 @@ cache/error.log
 .omc/
 node_modules/
 *.log
+skills-lock.json
