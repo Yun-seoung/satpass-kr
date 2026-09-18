@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/layout.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 </head>
 <body class="is-login-view">
 
@@ -135,69 +136,99 @@
       </div>
     </div>
 
-    <!-- 위성 선택 + 계산 -->
-    <div class="controls">
-      <div class="field">
-        <label for="satSelect">위성</label>
-        <select id="satSelect"><option>불러오는 중…</option></select>
+    <!-- 메인 탭: 위성 통과 / 오늘의 달 -->
+    <div class="main-tabs" id="mainTabs">
+      <button type="button" class="main-tab-btn active" data-maintab="sat">🛰 위성 통과</button>
+      <button type="button" class="main-tab-btn" data-maintab="moon">🌙 오늘의 달</button>
+    </div>
+
+    <div class="main-tab-panel" id="mainTabSat">
+      <!-- 위성 선택 + 계산 -->
+      <div class="controls">
+        <div class="field">
+          <label for="satSelect">위성</label>
+          <select id="satSelect"><option>불러오는 중…</option></select>
+        </div>
+        <button class="btn-calc" id="btnCalc">통과 시간 계산</button>
       </div>
-      <button class="btn-calc" id="btnCalc">통과 시간 계산</button>
-    </div>
 
-    <!-- 패스 테이블 -->
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>통과 시작 (KST)</th>
-            <th>최고 앙각</th>
-            <th>통과 종료</th>
-            <th>지속시간</th>
-            <th>방위 (시작 → 끝)</th>
-            <th>관측 조건</th>
-          </tr>
-        </thead>
-        <tbody id="passTbody">
-          <tr class="empty-row"><td colspan="6">위성을 고르고 계산 버튼을 누르세요.</td></tr>
-        </tbody>
-      </table>
-    </div>
+      <!-- 패스 테이블 -->
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>통과 시작 (KST)</th>
+              <th>최고 앙각</th>
+              <th>통과 종료</th>
+              <th>지속시간</th>
+              <th>방위 (시작 → 끝)</th>
+              <th>관측 조건</th>
+            </tr>
+          </thead>
+          <tbody id="passTbody">
+            <tr class="empty-row"><td colspan="6">위성을 고르고 계산 버튼을 누르세요.</td></tr>
+          </tbody>
+        </table>
+      </div>
 
-    <!-- 스카이 플롯 -->
-    <div class="sky-section" id="skySection" style="display:none">
-      <div class="sky-grid">
-        <div class="sky-info">
-          <div class="sky-icon">◎</div>
-          <h3 id="skyTitle">다음 패스 하늘 미리보기</h3>
-          <p class="sky-sub">전문 용어 대신, 어디를 보면 되는지 3단계로 알려드려요.</p>
+      <!-- 스카이 플롯 -->
+      <div class="sky-section" id="skySection" style="display:none">
+        <div class="sky-grid">
+          <div class="sky-info">
+            <div class="sky-icon">◎</div>
+            <h3 id="skyTitle">다음 패스 하늘 미리보기</h3>
+            <p class="sky-sub">전문 용어 대신, 어디를 보면 되는지 3단계로 알려드려요.</p>
 
-          <div class="sky-steps" id="skySteps">
-            <div class="sky-step">
-              <span class="sky-step-icon start">●</span>
-              <p class="sky-step-label">여기서 뜨기 시작해요</p>
-              <p class="sky-step-value" id="skyStepStart">-</p>
+            <div class="sky-steps" id="skySteps">
+              <div class="sky-step">
+                <span class="sky-step-icon start">●</span>
+                <p class="sky-step-label">여기서 뜨기 시작해요</p>
+                <p class="sky-step-value" id="skyStepStart">-</p>
+              </div>
+              <div class="sky-step">
+                <span class="sky-step-icon peak">▲</span>
+                <p class="sky-step-label">가장 높이 뜰 때</p>
+                <p class="sky-step-value" id="skyStepPeak">-</p>
+              </div>
+              <div class="sky-step">
+                <span class="sky-step-icon end">●</span>
+                <p class="sky-step-label">여기로 사라져요</p>
+                <p class="sky-step-value" id="skyStepEnd">-</p>
+              </div>
             </div>
-            <div class="sky-step">
-              <span class="sky-step-icon peak">▲</span>
-              <p class="sky-step-label">가장 높이 뜰 때</p>
-              <p class="sky-step-value" id="skyStepPeak">-</p>
-            </div>
-            <div class="sky-step">
-              <span class="sky-step-icon end">●</span>
-              <p class="sky-step-label">여기로 사라져요</p>
-              <p class="sky-step-value" id="skyStepEnd">-</p>
-            </div>
+
+            <div class="sky-desc" id="skyDesc"></div>
           </div>
 
-          <div class="sky-desc" id="skyDesc"></div>
-        </div>
-
-        <div class="sky-globe">
-          <div class="sky-globe-earth"></div>
-          <canvas id="skyCanvas" width="480" height="240"></canvas>
+          <div class="sky-globe">
+            <div class="sky-globe-earth"></div>
+            <canvas id="skyCanvas" width="480" height="240"></canvas>
+          </div>
         </div>
       </div>
-    </div>
+    </div><!-- /mainTabSat -->
+
+    <div class="main-tab-panel" id="mainTabMoon" style="display:none">
+      <div class="moon-card">
+        <div class="moon-emoji" id="moonEmoji">🌕</div>
+        <div class="moon-phase-name" id="moonPhaseName">불러오는 중…</div>
+
+        <div class="moon-times">
+          <div class="moon-time">
+            <span class="k">월출</span>
+            <span class="v" id="moonRise">—</span>
+          </div>
+          <div class="moon-time">
+            <span class="k">월몰</span>
+            <span class="v" id="moonSet">—</span>
+          </div>
+        </div>
+
+        <div class="moon-condition" id="moonCondition"></div>
+        <div class="moon-note">🛰 ISS는 달 밝기와 무관하게 언제든 관측할 수 있어요</div>
+        <div class="moon-next-full" id="moonNextFull"></div>
+      </div>
+    </div><!-- /mainTabMoon -->
 
   </div><!-- /appArea -->
 </main>
@@ -214,6 +245,12 @@ $(function () {
     timeZone:'Asia/Seoul', month:'2-digit', day:'2-digit',
     hour:'2-digit', minute:'2-digit', hour12:false
   });
+  // 분 단위 값을 "N시간 M분" 형태로 (1시간 미만이면 "M분"만)
+  const fmtDurationMin = mins => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
+  };
   const dir16 = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
   const dir16Ko = ['북','북북동','북동','동북동','동','동남동','남동','남남동','남','남남서','남서','서남서','서','서북서','북서','북북서'];
   const azName = az => dir16[Math.round(az / 22.5) % 16];
@@ -383,7 +420,7 @@ $(function () {
     $(this).prop('disabled', true).text('저장 중…');
     stationPost({ label, lat, lon, minEl })
       .done(r => {
-        if (r.ok) { currentStation = r.station; renderStation(); closeModal('stationModal'); }
+        if (r.ok) { currentStation = r.station; renderStation(); renderMoon(); closeModal('stationModal'); }
         else $('#stationErr').text(r.error);
       })
       .fail(() => $('#stationErr').text('서버 연결에 실패했습니다.'))
@@ -393,16 +430,30 @@ $(function () {
   // ── 화면 전환 ──
   function onLogin(user) {
     currentUser = user;
-    $('#loginPrompt').hide();
-    $('#appArea').show();
-    document.body.classList.remove('is-login-view');
     $('#loginState').html(
       `<span class="username">${user.username}</span>
        <button class="btn-ghost" id="btnLogout">로그아웃</button>`
     );
+
+    // 로그인 카드가 화면에 떠 있던 상태(직접 로그인/회원가입)에서만 부드럽게 넘어간다.
+    // 새로고침 등으로 이미 로그인된 세션을 복원하는 경우(loginPrompt가 표시된 적 없음)는
+    // 지연 없이 바로 서비스 화면을 보여준다.
+    if ($('#loginPrompt').is(':visible')) {
+      $('#loginPrompt').css('opacity', 0);
+      setTimeout(() => {
+        $('#loginPrompt').hide();
+        document.body.classList.remove('is-login-view');
+        $('#appArea').css('opacity', 0).show();
+        requestAnimationFrame(() => $('#appArea').css('opacity', 1));
+      }, 280);
+    } else {
+      document.body.classList.remove('is-login-view');
+      $('#appArea').show();
+    }
     loadStation();
     loadWeather();
     loadSatList();
+    renderMoon();
   }
 
   function onLogout() {
@@ -440,7 +491,7 @@ $(function () {
 
   function loadStation() {
     $.ajax({ url:'station.php', dataType:'json', timeout:10000 })
-      .done(r => { if (r.ok && r.station) currentStation = r.station; renderStation(); });
+      .done(r => { if (r.ok && r.station) currentStation = r.station; renderStation(); renderMoon(); });
   }
 
   // ── 우주기상: Kp → 일반인이 이해할 수 있는 메시지 ──
@@ -500,6 +551,78 @@ $(function () {
       $('#satSelect').empty();
       r.data.forEach(s => $('<option>').val(s.catnr).text(s.name).appendTo('#satSelect'));
     });
+  }
+
+  // ── 메인 탭(위성 통과 / 오늘의 달) 전환 ──
+  // 로그인/회원가입 전환에 쓰는 .tab(data-tab)과는 별개의 클래스라 서로 간섭하지 않는다.
+  $('.main-tab-btn').on('click', function() {
+    const tab = $(this).data('maintab');
+    $('.main-tab-btn').removeClass('active');
+    $(this).addClass('active');
+    $('.main-tab-panel').hide().css('opacity', 0);
+    const $panel = $(tab === 'moon' ? '#mainTabMoon' : '#mainTabSat');
+    $panel.show();
+    requestAnimationFrame(() => $panel.css('opacity', 1));
+    if (tab === 'moon') renderMoon();
+  });
+
+  // ── 오늘의 달 (SunCalc) ──
+  const DEFAULT_MOON_STATION = { lat: 36.3504, lon: 127.3845 }; // 대전
+
+  function moonEmoji(pct) {
+    if (pct <= 6)  return '🌑';
+    if (pct <= 19) return '🌒';
+    if (pct <= 31) return '🌓';
+    if (pct <= 44) return '🌔';
+    if (pct <= 56) return '🌕';
+    if (pct <= 69) return '🌖';
+    if (pct <= 81) return '🌗';
+    return '🌘';
+  }
+
+  function moonPhaseName(phase) {
+    if (phase < 0.03 || phase > 0.97) return '삭 (신월)';
+    if (phase < 0.22) return '초승달';
+    if (phase < 0.28) return '상현';
+    if (phase < 0.47) return '상현망';
+    if (phase < 0.53) return '보름달 (망)';
+    if (phase < 0.72) return '하현망';
+    if (phase < 0.78) return '하현';
+    return '그믐달';
+  }
+
+  const fmtHm = d => d.toLocaleString('ko-KR', {
+    timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', hour12:false
+  });
+
+  function renderMoon() {
+    if (typeof SunCalc === 'undefined') return;
+    const now = new Date();
+    const lat = currentStation ? currentStation.lat : DEFAULT_MOON_STATION.lat;
+    const lon = currentStation ? currentStation.lon : DEFAULT_MOON_STATION.lon;
+
+    const illum = SunCalc.getMoonIllumination(now);
+    const pct = Math.round(illum.fraction * 100);
+
+    $('#moonEmoji').text(moonEmoji(pct));
+    $('#moonPhaseName').text(`${moonPhaseName(illum.phase)} — ${pct}% 차 있음`);
+
+    const times = SunCalc.getMoonTimes(now, lat, lon);
+    $('#moonRise').text(times.rise ? fmtHm(times.rise) : (times.alwaysUp ? '하루 종일 떠 있음' : '오늘은 뜨지 않음'));
+    $('#moonSet').text(times.set ? fmtHm(times.set) : (times.alwaysDown ? '하루 종일 지지 않음' : '오늘은 지지 않음'));
+
+    let cond;
+    if (pct <= 25)      cond = '🟢 달이 어두워 별·은하수 관측에 좋은 조건이에요';
+    else if (pct <= 60) cond = '🟡 달빛이 있어 희미한 별은 보기 어려울 수 있어요';
+    else                cond = '🔴 달이 밝아 별·은하수 관측에 불리해요';
+    $('#moonCondition').text(cond);
+
+    // 현재 월령이 보름(50%) 이전이면 이번 보름달까지, 이후면 다음 보름달까지 남은 날수
+    const SYNODIC_MONTH = 29.530588;
+    const daysToFull = Math.round((illum.phase < 0.5 ? 0.5 - illum.phase : 1.5 - illum.phase) * SYNODIC_MONTH);
+    $('#moonNextFull').text(
+      daysToFull <= 0 ? '오늘이 보름달이에요! 🌕' : `다음 보름달까지 ${daysToFull}일 남았어요`
+    );
   }
 
   // ── 스카이 플롯 ──
@@ -676,7 +799,7 @@ $(function () {
       if (nextPass) {
         const minsLeft = Math.max(0, Math.round((nextPass.aos.getTime() - now.getTime()) / 60000));
         $('#nextPassLine').removeClass('hint').text(fmtKst(nextPass.aos));
-        $('#nextPassSub').text(`약 ${minsLeft}분 후 · 최고 ${nextPass.maxEl.toFixed(1)}°`);
+        $('#nextPassSub').text(`약 ${fmtDurationMin(minsLeft)} 후 · 최고 ${nextPass.maxEl.toFixed(1)}°`);
       }
 
       // 다음 패스(가장 가까운 패스)를 기본으로 스카이 플롯에 표시

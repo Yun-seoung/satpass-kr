@@ -92,6 +92,11 @@
       0 0 0 1px rgba(160,205,255,.3),
       0 0 60px 10px rgba(110,175,255,.28);
   }
+
+  /* 페이지 전환: index.html(로그인)로 넘어갈 때 뚝 끊기지 않고 살짝 페이드되도록 */
+  body { transition: opacity .28s ease; animation: pageFadeIn .4s ease both; }
+  body.page-leaving { opacity: 0; }
+  @keyframes pageFadeIn { from { opacity: 0; } to { opacity: 1; } }
 </style>
 </head>
 <body class="min-h-[100dvh] bg-bg text-ink antialiased">
@@ -546,6 +551,17 @@
       window.addEventListener('resize', requestTick);
       requestTick();
     }
+
+    // ── 페이지 전환: index.html(로그인)로 이동하기 전에 살짝 페이드아웃 ──
+    // 그냥 <a href>만 쓰면 브라우저가 즉시 다음 페이지를 그려 화면이 뚝 끊기는 느낌을 준다.
+    // 클릭을 가로채 body를 먼저 투명하게 만든 뒤(transition과 시간을 맞춰) 이동시킨다.
+    document.querySelectorAll('a[href="index.html"]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.body.classList.add('page-leaving');
+        setTimeout(() => { window.location.href = a.href; }, 280);
+      });
+    });
   });
 </script>
 

@@ -24,7 +24,11 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:"IBM Plex Sans KR","Malgun Gothic","Apple SD Gothic Neo",sans-serif;
-     color:var(--ink);background:var(--bg);line-height:1.6;min-height:100vh}
+     color:var(--ink);background:var(--bg);line-height:1.6;min-height:100vh;
+     animation:pageFadeIn .4s ease both}
+
+/* landing.html에서 넘어올 때 화면이 뚝 끊기지 않도록 살짝 페이드인 */
+@keyframes pageFadeIn{from{opacity:0}to{opacity:1}}
 
 /* 비로그인 화면: 뷰포트 전체를 덮는 배경 이미지 (main의 max-width 제약과 무관하게 body 레벨에 적용) */
 body.is-login-view{

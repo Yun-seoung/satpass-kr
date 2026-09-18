@@ -131,6 +131,30 @@ td .note{display:block}
 
 .empty-row td{color:var(--muted);text-align:center;padding:32px}
 
+/* ── 메인 탭(위성 통과 / 오늘의 달) ── */
+.main-tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:20px}
+.main-tab-btn{background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;
+              padding:10px 18px;font:inherit;font-size:.95rem;font-weight:600;color:var(--muted);
+              cursor:pointer;transition:color .35s var(--ease), border-color .35s var(--ease)}
+.main-tab-btn:hover{color:var(--ink)}
+.main-tab-btn.active{color:#fff;border-bottom-color:var(--cobalt)}
+.main-tab-panel{opacity:1;transition:opacity .2s ease}
+
+/* ── 오늘의 달 ── */
+.moon-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+           padding:40px 24px;text-align:center;max-width:420px;margin:0 auto;
+           box-shadow:0 0 20px rgba(123,104,238,.06)}
+.moon-emoji{font-size:2.5rem;line-height:1;margin-bottom:12px}
+.moon-phase-name{font-size:1.1rem;font-weight:600;margin-bottom:22px}
+.moon-times{display:flex;justify-content:center;gap:32px;margin-bottom:20px;
+            padding-bottom:20px;border-bottom:1px solid var(--line)}
+.moon-time{display:flex;flex-direction:column;gap:4px}
+.moon-time .k{font-size:.8rem;color:var(--muted)}
+.moon-time .v{font-size:1.05rem;font-weight:600}
+.moon-condition{font-size:.95rem;margin-bottom:10px}
+.moon-note{font-size:.76rem;color:var(--muted);margin-bottom:18px}
+.moon-next-full{font-size:.88rem;color:var(--muted)}
+
 /* ── 스카이 플롯 ── */
 .sky-section{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
              padding:18px 20px;margin-top:20px;box-shadow:0 0 20px rgba(123,104,238,.06)}
@@ -199,7 +223,11 @@ td .note{display:block}
   padding:64px 20px;
   margin:-28px -20px -64px;
   background:transparent;
+  transition:opacity .28s ease;
 }
+
+/* 로그인 완료 → 서비스 화면 전환을 부드럽게(뚝 끊기지 않도록) */
+#appArea{transition:opacity .3s ease}
 
 /* 순수 CSS로 그린 지구본 — bg-login.png 배경 이미지로 대체되어 더 이상 사용하지 않는다 */
 .earth-bg{
