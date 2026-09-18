@@ -140,6 +140,12 @@ td .note{display:block}
 .main-tab-btn.active{color:#fff;border-bottom-color:var(--cobalt)}
 .main-tab-panel{opacity:1;transition:opacity .2s ease}
 
+/* 탭이 3개라 좁은 화면에서는 줄바꿈을 허용한다 */
+@media (max-width:640px){
+  .main-tabs{flex-wrap:wrap}
+  .main-tab-btn{padding:10px 14px;font-size:.9rem}
+}
+
 /* ── 오늘의 달 ── */
 .moon-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
            padding:40px 24px;text-align:center;max-width:420px;margin:0 auto;
@@ -154,6 +160,69 @@ td .note{display:block}
 .moon-condition{font-size:.95rem;margin-bottom:10px}
 .moon-note{font-size:.76rem;color:var(--muted);margin-bottom:18px}
 .moon-next-full{font-size:.88rem;color:var(--muted)}
+
+/* ── 일출·일몰 탭 ── */
+.sun-section{padding-bottom:26px;margin-bottom:26px;border-bottom:1px solid var(--line)}
+.sun-section-last{padding-bottom:0;margin-bottom:0;border-bottom:none}
+.sun-h{font-size:.95rem;font-weight:600;margin-bottom:14px}
+
+/* 24시간 타임라인 — 바탕이 밤, 그 위에 낮/최적 구간을 덮어 그린다 */
+.sun-tl-hours{display:flex;justify-content:space-between;
+              font-size:.72rem;color:var(--muted);margin-bottom:5px}
+.sun-tl-hours span{flex:0 0 auto}
+.sun-tl-hours span:first-child{color:var(--ink);font-weight:600}
+.sun-tl{position:relative;height:40px;border-radius:8px;overflow:hidden;
+        background:#0B0D17;border:1px solid var(--line)}
+.sun-tl-seg{position:absolute;top:0;bottom:0}
+.sun-tl-seg.day{background:#1a3a5c}
+.sun-tl-seg.prime{background:#4A90D9}
+
+/* 위성 패스 마커 (최적 구간에 걸치면 금색) */
+.sun-tl-pass{position:absolute;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;
+             border-radius:50%;background:#E1E3EA;border:1px solid rgba(11,13,23,.7);
+             cursor:help;z-index:2}
+.sun-tl-pass.is-prime{background:#FFB800;box-shadow:0 0 8px rgba(255,184,0,.7)}
+
+/* 현재 시각: 흰 세로선 + 위쪽 삼각형 마커.
+   바의 왼쪽 끝(0%)에 놓이므로 overflow:hidden에 잘리지 않도록 안쪽으로 정렬한다. */
+.sun-tl-now{position:absolute;top:0;bottom:0;width:2px;background:#fff;z-index:3}
+.sun-tl-now::before{content:"";position:absolute;top:0;left:0;
+                    border-left:5px solid transparent;border-right:5px solid transparent;
+                    border-top:6px solid #fff}
+
+.sun-tl-hint{font-size:.78rem;color:var(--muted);margin-top:8px;min-height:1.2em}
+
+.sun-legend{display:flex;flex-wrap:wrap;gap:16px;margin-top:10px;
+            font-size:.76rem;color:var(--muted)}
+.sun-lg{display:inline-flex;align-items:center;gap:6px}
+.sun-lg .sw{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.sun-lg .sw.day{background:#1a3a5c}
+.sun-lg .sw.prime{background:#4A90D9}
+.sun-lg .sw.night{background:#0B0D17;border:1px solid var(--line)}
+.sun-lg .sw.dot{width:9px;height:9px;border-radius:50%;background:#E1E3EA}
+
+/* 3일 일출·일몰 표 — 패스 테이블과 같은 스타일이되 클릭 대상은 아니다 */
+#sunDayTable tbody tr{cursor:default}
+#sunDayTable tbody tr.is-today td{background:#1a2540;font-weight:600}
+#sunDayTable tbody tr.is-today:hover td{background:#1a2540}
+
+/* 오늘의 최적 관측 구간 카드 */
+.sun-prime-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.sun-prime-card{background:#141829;border:1px solid var(--line);border-radius:var(--radius);
+                padding:20px 18px;text-align:center}
+.sun-prime-card .t{font-size:.85rem;color:var(--muted);margin-bottom:8px}
+.sun-prime-card .v{font-size:1.4rem;font-weight:600;color:#4A90D9;line-height:1.2}
+.sun-prime-card .s{font-size:.74rem;color:var(--muted);margin-top:6px}
+
+.sun-prime-pass{margin-top:14px;font-size:.88rem;color:var(--muted);
+                background:#141829;border:1px solid var(--line);border-radius:var(--radius);
+                padding:14px 16px;line-height:1.7}
+.sun-prime-pass.is-hit{color:#FFB800;border-color:rgba(255,184,0,.35);
+                       background:rgba(255,184,0,.08)}
+
+@media (max-width:560px){
+  .sun-prime-grid{grid-template-columns:1fr}
+}
 
 /* ── 스카이 플롯 ── */
 .sky-section{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
