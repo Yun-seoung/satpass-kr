@@ -248,6 +248,37 @@ td .note{display:block}
   .sun-prime-grid{grid-template-columns:1fr}
 }
 
+/* ── ISS 실시간 위치 지도 ── */
+.iss-map-section{margin-top:20px}
+.iss-map-h{font-size:1rem;font-weight:600;margin-bottom:10px}
+.iss-map-hint{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+              padding:28px;text-align:center;font-size:.9rem;color:var(--muted)}
+
+.iss-map-wrap{position:relative}
+#issMap{height:400px;border-radius:12px;border:1px solid var(--line);
+        background:#0B0D17;z-index:0}
+
+/* 갱신 시각 — 지도 위에 얹되 클릭은 지도가 받도록 한다.
+   Leaflet 저작권 표기 띄와 겹치지 않게 그 위로 올린다. */
+.iss-map-stamp{position:absolute;right:10px;bottom:28px;z-index:500;pointer-events:none;
+               font-size:.72rem;color:var(--muted);
+               background:rgba(11,13,23,.78);border:1px solid var(--line);
+               border-radius:6px;padding:3px 8px}
+
+.iss-marker{font-size:19px;line-height:28px;text-align:center;
+            text-shadow:0 0 9px rgba(74,144,217,.95)}
+
+/* Leaflet 기본 UI를 다크 테마에 맞춘다 */
+.leaflet-container{background:#0B0D17;font-family:inherit}
+.leaflet-control-attribution{background:rgba(11,13,23,.82);color:var(--muted);font-size:.68rem}
+.leaflet-control-attribution a{color:var(--cobalt)}
+.leaflet-bar a,.leaflet-bar a:hover{background:var(--panel2);color:var(--ink);
+                                    border-bottom-color:var(--line)}
+.leaflet-bar a:hover{background:var(--line);color:#fff}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel2);color:var(--ink)}
+.leaflet-popup-content{font-size:.85rem;line-height:1.65}
+.leaflet-popup-close-button{color:var(--muted)!important}
+
 /* ── 스카이 플롯 ── */
 .sky-section{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
              padding:18px 20px;margin-top:20px;box-shadow:0 0 20px rgba(123,104,238,.06)}

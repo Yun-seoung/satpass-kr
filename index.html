@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/components.css">
 <link rel="stylesheet" href="css/layout.css">
@@ -172,6 +173,18 @@
         </table>
       </div>
 
+      <!-- ISS 실시간 위치 지도 (ISS를 고른 경우에만 노출) -->
+      <section class="iss-map-section" id="issMapSection" style="display:none">
+        <h3 class="iss-map-h">🛰 ISS 현재 위치</h3>
+
+        <p class="iss-map-hint" id="issMapHint">통과 시간 계산 후 지도가 표시됩니다</p>
+
+        <div class="iss-map-wrap" id="issMapWrap" style="display:none">
+          <div id="issMap"></div>
+          <span class="iss-map-stamp" id="issMapStamp"></span>
+        </div>
+      </section>
+
       <!-- 스카이 플롯 -->
       <div class="sky-section" id="skySection" style="display:none">
         <div class="sky-grid">
@@ -296,6 +309,7 @@
   </div><!-- /appArea -->
 </main>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/satellite.js@6.0.2/dist/satellite.min.js"></script>
 <script src="passcalc.js"></script>
@@ -484,7 +498,7 @@ $(function () {
     $(this).prop('disabled', true).text('저장 중…');
     stationPost({ label, lat, lon, minEl })
       .done(r => {
-        if (r.ok) { currentStation = r.station; renderStation(); renderMoon(); renderSun(); closeModal('stationModal'); }
+        if (r.ok) { currentStation = r.station; renderStation(); renderMoon(); renderSun(); issRefresh(); closeModal('stationModal'); }
         else $('#stationErr').text(r.error);
       })
       .fail(() => $('#stationErr').text('서버 연결에 실패했습니다.'))
@@ -524,6 +538,7 @@ $(function () {
   function onLogout() {
     currentUser = null; currentStation = null;
     currentOmm = null; currentPasses = []; currentSatName = '';
+    issOmm = null; stopIssTimer(); $('#issMapSection').hide();
     $('#appArea').hide();
     $('#loginPrompt').show();
     document.body.classList.add('is-login-view');
@@ -556,7 +571,7 @@ $(function () {
 
   function loadStation() {
     $.ajax({ url:'station.php', dataType:'json', timeout:10000 })
-      .done(r => { if (r.ok && r.station) currentStation = r.station; renderStation(); renderMoon(); renderSun(); });
+      .done(r => { if (r.ok && r.station) currentStation = r.station; renderStation(); renderMoon(); renderSun(); issRefresh(); });
   }
 
   // ── 우주기상: Kp → 일반인이 이해할 수 있는 메시지 ──
@@ -615,6 +630,7 @@ $(function () {
     api({ src:'sats' }).done(r => {
       $('#satSelect').empty();
       r.data.forEach(s => $('<option>').val(s.catnr).text(s.name).appendTo('#satSelect'));
+      issRefresh(); // 기본 선택이 ISS면 바로 지도 영역을 보여 준다
     });
   }
 
@@ -633,6 +649,8 @@ $(function () {
     // 탭을 열 때마다 현재 시각 기준으로 다시 계산한다.
     if (tab === 'moon') renderMoon();
     if (tab === 'sun') renderSun();
+    // 숨겨진 동안 크기를 잘못 잡았을 수 있어 다시 계산시킨다
+    if (tab === 'sat' && issMap) issMap.invalidateSize();
   });
 
   // ── 오늘의 달 (SunCalc) ──
@@ -944,6 +962,160 @@ $(function () {
   // 현재 시각 마커와 구간 판정이 시간에 따라 달라지므로 1분마다 다시 그린다.
   setInterval(renderSun, 60000);
 
+  // ── ISS 실시간 위치 지도 (Leaflet) ──
+  // 통과 계산에서 이미 받아 둔 ISS 궤도요소를 재사용한다 (api.php를 다시 부르지 않는다).
+  const ISS_CATNR = '25544';
+  const ISS_TICK_MS = 10000;          // 마커 갱신 주기
+  const ISS_ORBIT_MIN = 90;           // 앞으로 그릴 궤도 길이(약 1바퀴)
+  const ISS_VIS_RADIUS_M = 2000000;   // 관측지 가시권 반경(약 2000km)
+
+  let issOmm = null;                  // ISS로 계산했을 때만 채워진다
+  let issMap = null, issMarker = null, issStationMarker = null, issCircle = null;
+  let issOrbitLines = [];
+  let issTimer = null;
+
+  const isIssSelected = () => $('#satSelect').val() === ISS_CATNR;
+
+  const toDeg = rad => rad * 180 / Math.PI;
+  // eciToGeodetic의 경도는 ±180°를 벗어날 수 있어 지도용으로 정규화한다.
+  const normLon = deg => ((deg + 540) % 360) - 180;
+
+  const fmtHms = d => d.toLocaleString('ko-KR', {
+    timeZone:'Asia/Seoul', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+  });
+
+  // OMM + 시각 → 위도/경도/고도(km)
+  function issGeodetic(satrec, when) {
+    const pv = satellite.propagate(satrec, when);
+    if (!pv || !pv.position) return null;
+    const geo = satellite.eciToGeodetic(pv.position, satellite.gstime(when));
+    return {
+      lat: toDeg(geo.latitude),
+      lon: normLon(toDeg(geo.longitude)),
+      alt: geo.height
+    };
+  }
+
+  // 앞으로 ISS_ORBIT_MIN분 경로를 1분 간격으로. 날짜변경선(±180°)을 넘으면
+  // 선이 지도를 가로질러 그어지지 않도록 폴리라인을 끊어서 반환한다.
+  function issOrbitSegments(satrec, from) {
+    const segments = [];
+    let current = [], prevLon = null;
+
+    for (let m = 0; m <= ISS_ORBIT_MIN; m++) {
+      const g = issGeodetic(satrec, new Date(from.getTime() + m * 60000));
+      if (!g) continue;
+      if (prevLon !== null && Math.abs(g.lon - prevLon) > 180) {
+        if (current.length > 1) segments.push(current);
+        current = [];
+      }
+      current.push([g.lat, g.lon]);
+      prevLon = g.lon;
+    }
+    if (current.length > 1) segments.push(current);
+    return segments;
+  }
+
+  function ensureIssMap() {
+    if (issMap) return issMap;
+    issMap = L.map('issMap', { worldCopyJump:true }).setView([20, 0], 2);
+    L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
+      attribution: '© Stadia Maps © OpenMapTiles © OpenStreetMap',
+      maxZoom: 18
+    }).addTo(issMap);
+    return issMap;
+  }
+
+  // 기존 궤도 레이어를 지우고 기준 시각으로 다시 그린다.
+  function drawIssOrbit(map, satrec, from) {
+    issOrbitLines.forEach(line => map.removeLayer(line));
+    issOrbitLines = issOrbitSegments(satrec, from).map(points =>
+      L.polyline(points, { color:'#4A90D9', weight:2, opacity:.85, dashArray:'6 6' }).addTo(map));
+  }
+
+  // 마커와 궤도 경로를 같은 시각 기준으로 함께 갱신한다 (지도 자체는 재생성하지 않는다).
+  function issTick() {
+    if (!issOmm || !issMap || !issMarker) return;
+    const now = new Date();
+    const satrec = satellite.json2satrec(issOmm);
+    const g = issGeodetic(satrec, now);
+    if (!g) return;
+
+    issMarker.setLatLng([g.lat, g.lon]);
+    issMarker.setPopupContent(issPopupHtml(g));
+    drawIssOrbit(issMap, satrec, now);
+    $('#issMapStamp').text(`마지막 갱신: ${fmtHms(now)}`);
+  }
+
+  const issPopupHtml = g =>
+    `<b>ISS (국제우주정거장)</b><br>` +
+    `위도: ${g.lat.toFixed(1)}°<br>` +
+    `경도: ${g.lon.toFixed(1)}°<br>` +
+    `고도: ${g.alt.toFixed(0)} km`;
+
+  // 지도 + 궤도 + 관측지 + 가시권을 모두 다시 그린다 (궤도요소나 관측지가 바뀌었을 때).
+  function issRenderAll() {
+    const map = ensureIssMap();
+    const now = new Date();
+    const satrec = satellite.json2satrec(issOmm);
+    const g = issGeodetic(satrec, now);
+    if (!g) return;
+
+    // ISS 마커
+    if (!issMarker) {
+      issMarker = L.marker([g.lat, g.lon], {
+        icon: L.divIcon({ className:'iss-marker', html:'\u{1F6F0}', iconSize:[28,28], iconAnchor:[14,14] })
+      }).addTo(map).bindPopup(issPopupHtml(g));
+    } else {
+      issMarker.setLatLng([g.lat, g.lon]).setPopupContent(issPopupHtml(g));
+    }
+
+    // 궤도 경로 (점선)
+    drawIssOrbit(map, satrec, now);
+
+    // 관측지 마커 + 가시권 원
+    if (issStationMarker) { map.removeLayer(issStationMarker); issStationMarker = null; }
+    if (issCircle)        { map.removeLayer(issCircle);        issCircle = null; }
+    if (currentStation) {
+      issCircle = L.circle([currentStation.lat, currentStation.lon], {
+        radius: ISS_VIS_RADIUS_M, color:'#4A90D9', weight:1,
+        fillColor:'#4A90D9', fillOpacity:.1
+      }).addTo(map);
+      issStationMarker = L.circleMarker([currentStation.lat, currentStation.lon], {
+        radius:6, color:'#3DDC84', weight:2, fillColor:'#3DDC84', fillOpacity:.9
+      }).addTo(map).bindPopup(`<b>내 관측지</b><br>${escAttr(currentStation.label)}`);
+    }
+
+    $('#issMapStamp').text(`마지막 갱신: ${fmtHms(now)}`);
+    // 숨겨진 상태에서 만들어졌을 수 있으므로 크기를 다시 잡아 준다.
+    map.invalidateSize();
+  }
+
+  function startIssTimer() {
+    if (!issTimer) issTimer = setInterval(issTick, ISS_TICK_MS);
+  }
+  function stopIssTimer() {
+    if (issTimer) { clearInterval(issTimer); issTimer = null; }
+  }
+
+  // 표시 여부를 판단하고, 보일 때만 그리고 타이머를 돌린다.
+  function issRefresh() {
+    const show = isIssSelected();
+    $('#issMapSection').toggle(show);
+    if (!show) { stopIssTimer(); return; }
+
+    const ready = !!issOmm;
+    $('#issMapHint').toggle(!ready);
+    $('#issMapWrap').toggle(ready);
+    if (!ready) { stopIssTimer(); return; }
+
+    issRenderAll();
+    startIssTimer();
+  }
+
+  // 다른 위성을 고르면 지도를 숨긴다 (ISS 전용 기능).
+  $('#satSelect').on('change', issRefresh);
+
   // ── 스카이 플롯 ──
   function selectPass(idx) {
     if (!currentPasses.length || !currentPasses[idx] || !currentOmm || !currentStation) return;
@@ -1080,6 +1252,8 @@ $(function () {
       currentPasses = passes;
       currentSatName = $('#satSelect option:selected').text();
       renderSun(); // 일출·일몰 탭 타임라인에 패스 마커를 반영
+      if (catnr === ISS_CATNR) issOmm = omm; // ISS 지도는 이 궤도요소를 계속 재사용한다
+      issRefresh();
       $('#skySection').hide();
 
       const $tb = $('#passTbody').empty();
