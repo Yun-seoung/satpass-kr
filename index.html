@@ -183,6 +183,13 @@
           <div id="issMap"></div>
           <span class="iss-map-stamp" id="issMapStamp"></span>
         </div>
+
+        <div class="iss-legend" id="issLegend" style="display:none">
+          <span class="iss-lg"><i class="ico">🛰</i>ISS 현재 위치</span>
+          <span class="iss-lg"><i class="dot station"></i>내 관측지</span>
+          <span class="iss-lg"><i class="ring"></i>가시권 <em>(이 원 안으로 들어오면 지상에서 관측 가능)</em></span>
+          <span class="iss-lg"><i class="dash"></i>앞으로 90분간 예상 궤도 <em>(날짜변경선에서 끊겨 보이는 건 정상)</em></span>
+        </div>
       </section>
 
       <!-- 스카이 플롯 -->
@@ -1115,7 +1122,7 @@ $(function () {
 
   function ensureIssMap() {
     if (issMap) return issMap;
-    issMap = L.map('issMap', { worldCopyJump:true }).setView([20, 0], 2);
+    issMap = L.map('issMap', { worldCopyJump:true, minZoom:2 }).setView([20, 0], 2);
     L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
       attribution: '© Stadia Maps © OpenMapTiles © OpenStreetMap',
       maxZoom: 18
@@ -1144,11 +1151,17 @@ $(function () {
     $('#issMapStamp').text(`마지막 갱신: ${fmtHms(now)}`);
   }
 
+  // 지상 투영점이 관측지 가시권(원) 안에 있는지 — 원을 그릴 때와 같은 반경을 쓴다.
+  const issInVisibility = g =>
+    !!currentStation &&
+    L.latLng(g.lat, g.lon).distanceTo([currentStation.lat, currentStation.lon]) <= ISS_VIS_RADIUS_M;
+
   const issPopupHtml = g =>
     `<b>ISS (국제우주정거장)</b><br>` +
     `위도: ${g.lat.toFixed(1)}°<br>` +
     `경도: ${g.lon.toFixed(1)}°<br>` +
-    `고도: ${g.alt.toFixed(0)} km`;
+    `고도: ${g.alt.toFixed(0)} km` +
+    (issInVisibility(g) ? `<br><span class="iss-in-range">현재 관측 가능 범위 내에 있어요</span>` : '');
 
   // 지도 + 궤도 + 관측지 + 가시권을 모두 다시 그린다 (궤도요소나 관측지가 바뀌었을 때).
   function issRenderAll() {
@@ -1177,7 +1190,10 @@ $(function () {
       issCircle = L.circle([currentStation.lat, currentStation.lon], {
         radius: ISS_VIS_RADIUS_M, color:'#4A90D9', weight:1,
         fillColor:'#4A90D9', fillOpacity:.1
-      }).addTo(map);
+      }).addTo(map).bindTooltip(
+        `이 원 안으로 ISS가 들어오면 ${escAttr(currentStation.label)}에서 관측 가능한 위치예요`,
+        { sticky:true }
+      );
       issStationMarker = L.circleMarker([currentStation.lat, currentStation.lon], {
         radius:6, color:'#3DDC84', weight:2, fillColor:'#3DDC84', fillOpacity:.9
       }).addTo(map).bindPopup(`<b>내 관측지</b><br>${escAttr(currentStation.label)}`);
@@ -1204,6 +1220,7 @@ $(function () {
     const ready = !!issOmm;
     $('#issMapHint').toggle(!ready);
     $('#issMapWrap').toggle(ready);
+    $('#issLegend').toggle(ready);
     if (!ready) { stopIssTimer(); return; }
 
     issRenderAll();

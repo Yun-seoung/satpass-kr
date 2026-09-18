@@ -116,7 +116,7 @@ tr:last-child td{border-bottom:none}
 tbody tr{cursor:pointer}
 tr td{transition:background .25s var(--ease)}
 tr:hover td{background:rgba(74,144,217,.08)}
-tr.sel td{background:rgba(74,144,217,.14);box-shadow:inset 2px 0 0 var(--cobalt)}
+tr.sel td{background:rgba(74,144,217,.14)}
 
 .gauge{display:flex;align-items:center;gap:8px}
 .gauge .bar{width:72px;height:7px;background:var(--line);border-radius:4px;overflow:hidden;flex-shrink:0}
@@ -312,6 +312,21 @@ td .note{display:block}
 .iss-marker{font-size:19px;line-height:28px;text-align:center;
             text-shadow:0 0 9px rgba(74,144,217,.95)}
 
+/* 팝업 안 "관측 가능 범위" 안내 */
+.iss-in-range{color:#3DDC84;font-weight:600}
+
+/* 지도 아래 범례 — 표식 색은 지도에 실제로 그려지는 색과 맞춘다 */
+.iss-legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:10px;
+            font-size:.76rem;color:var(--muted);word-break:keep-all}
+.iss-lg{display:inline-flex;align-items:center;gap:6px}
+.iss-lg em{font-style:normal;opacity:.75}
+.iss-lg .ico{font-style:normal;font-size:.9rem;line-height:1}
+.iss-lg .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.iss-lg .dot.station{background:#3DDC84}
+.iss-lg .ring{width:12px;height:12px;border-radius:50%;flex-shrink:0;
+              border:1px solid #4A90D9;background:rgba(74,144,217,.1)}
+.iss-lg .dash{width:20px;height:0;flex-shrink:0;border-top:2px dashed #4A90D9}
+
 /* Leaflet 기본 UI를 다크 테마에 맞춘다 */
 .leaflet-container{background:#0B0D17;font-family:inherit}
 .leaflet-control-attribution{background:rgba(11,13,23,.82);color:var(--muted);font-size:.68rem}
@@ -322,6 +337,12 @@ td .note{display:block}
 .leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--panel2);color:var(--ink)}
 .leaflet-popup-content{font-size:.85rem;line-height:1.65}
 .leaflet-popup-close-button{color:var(--muted)!important}
+.leaflet-tooltip{background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+                 box-shadow:0 6px 18px rgba(0,0,0,.45);font-size:.8rem}
+.leaflet-tooltip-top::before{border-top-color:var(--line)}
+.leaflet-tooltip-bottom::before{border-bottom-color:var(--line)}
+.leaflet-tooltip-left::before{border-left-color:var(--line)}
+.leaflet-tooltip-right::before{border-right-color:var(--line)}
 
 /* ── 스카이 플롯 ── */
 .sky-section{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
