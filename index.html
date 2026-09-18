@@ -238,7 +238,12 @@
         <h3 class="sun-h">지금부터 24시간 타임라인</h3>
 
         <div class="sun-tl-hours" id="sunTlHours"></div>
-        <div class="sun-tl" id="sunTimeline"></div>
+
+        <div class="sun-tl-wrap">
+          <div class="sun-tl-labels" id="sunTlLabels"></div>
+          <div class="sun-tl" id="sunTimeline"></div>
+          <div class="sun-tl-tip" id="sunTlTip"></div>
+        </div>
 
         <p class="sun-tl-hint" id="sunTlHint">위성 통과 탭에서 먼저 계산해주세요</p>
 
@@ -246,7 +251,8 @@
           <span class="sun-lg"><i class="sw day"></i>낮</span>
           <span class="sun-lg"><i class="sw prime"></i>최적 관측</span>
           <span class="sun-lg"><i class="sw night"></i>밤</span>
-          <span class="sun-lg"><i class="sw dot"></i>위성 패스</span>
+          <span class="sun-lg"><i class="sw dot gold"></i>최적 구간 패스</span>
+          <span class="sun-lg"><i class="sw dot"></i>일반 패스</span>
         </div>
       </section>
 
@@ -734,6 +740,15 @@ $(function () {
     windows.some(w => p.aos.getTime() <= w.to && p.los.getTime() >= w.from);
 
   // ── 섹션 1: 지금부터 24시간 타임라인 ──
+  const LABEL_ROW_H = 17;   // 라벨 한 줄 높이(px)
+  const LABEL_ROWS = 3;     // 겹칠 때 계단식으로 내려갈 수 있는 최대 줄 수
+
+  // 라벨은 좁으므로 괄호 뒤를 떼고 짧게 쓴다 ("ISS (ZARYA)" → "ISS")
+  function shortSatName(name) {
+    const base = String(name || '위성').split('(')[0].trim() || '위성';
+    return base.length > 10 ? base.slice(0, 10) + '…' : base;
+  }
+
   function renderSunTimeline(now, lat, lon) {
     const start = now.getTime();
     const end = start + DAY_MS;
@@ -763,16 +778,42 @@ $(function () {
       const a = p.aos.getTime();
       return a >= start && a <= end;
     });
+
+    // 라벨이 서로 겹치지 않도록, 라벨 하나가 차지하는 폭을 %로 환산해 간격을 잡는다.
+    const barW = $('#sunTimeline').width() || 860;
+    const minGap = (78 / barW) * 100;
+    const rowLastX = new Array(LABEL_ROWS).fill(-Infinity);
+    const shortName = shortSatName(currentSatName);
+    let labelHtml = '';
+
     shown.forEach(p => {
+      const x = pos(p.aos.getTime());
       const hit = passHitsPrime(p, windows);
-      const tip = `${fmtHm(p.aos)} ${currentSatName || '위성'} ${p.maxEl.toFixed(1)}°`;
-      html += `<div class="sun-tl-pass${hit ? ' is-prime' : ''}" ` +
-              `style="left:${pos(p.aos.getTime())}%" title="${escAttr(tip)}"></div>`;
+      const detail = `${fmtHm(p.aos)} ${shortName} · 최고 ${p.maxEl.toFixed(1)}° · ` +
+                     `${p.durationMin.toFixed(1)}분 · ${azName(p.aosAz)}→${azName(p.losAz)}`;
+
+      html += `<div class="sun-tl-pass${hit ? ' is-prime' : ''}" style="left:${x}%" ` +
+              `tabindex="0" data-tip="${escAttr(detail)}"></div>`;
+
+      // 앞선 라벨과 너무 가까우면 아랫줄로 내리고, 세 줄로도 모자라면 라벨은 생략한다.
+      // (마커와 툴팁은 그대로 남으므로 정보가 사라지지는 않는다)
+      const row = rowLastX.findIndex(lastX => x - lastX >= minGap);
+      if (row === -1) return;
+      rowLastX[row] = x;
+
+      const align = x < minGap / 2 ? ' at-start' : (x > 100 - minGap / 2 ? ' at-end' : '');
+      labelHtml += `<span class="sun-tl-label${hit ? ' is-prime' : ''}${align}" ` +
+                   `style="left:${x}%;bottom:${row * LABEL_ROW_H}px">` +
+                   `${fmtHm(p.aos)} ${escAttr(shortName)}</span>`;
     });
 
     // 현재 시각은 늘 바의 시작점(0%)이다.
     html += `<div class="sun-tl-now" style="left:${pos(start)}%"></div>`;
     $('#sunTimeline').html(html);
+
+    const usedRows = rowLastX.filter(x => x > -Infinity).length;
+    $('#sunTlLabels').css('height', usedRows * LABEL_ROW_H + 'px').html(labelHtml);
+    hideSunTip();
 
     // 눈금: 현재 시각부터 6시간 간격
     $('#sunTlHours').html(
@@ -786,6 +827,43 @@ $(function () {
         : (shown.length ? '' : '계산한 패스가 모두 지난 시간이에요. 위성 통과 탭에서 다시 계산해주세요')
     );
   }
+
+  // ── 패스 마커 상세 툴팁 ──
+  // 호버로 띄우고, 클릭하면 고정된다(터치 환경에서는 호버가 없으므로 클릭이 주 경로).
+  let sunTipPinned = false;
+
+  function showSunTip($marker) {
+    const x = parseFloat($marker[0].style.left) || 0;
+    $('#sunTlTip')
+      .text($marker.attr('data-tip'))
+      .css('left', x + '%')
+      .toggleClass('at-start', x < 14)
+      .toggleClass('at-end', x > 86)
+      .addClass('is-on');
+  }
+
+  function hideSunTip() {
+    sunTipPinned = false;
+    $('#sunTlTip').removeClass('is-on');
+  }
+
+  $('#sunTimeline')
+    .on('mouseenter focusin', '.sun-tl-pass', function() {
+      if (!sunTipPinned) showSunTip($(this));
+    })
+    .on('mouseleave focusout', '.sun-tl-pass', function() {
+      if (!sunTipPinned) $('#sunTlTip').removeClass('is-on');
+    })
+    .on('click', '.sun-tl-pass', function(e) {
+      e.stopPropagation();
+      // 같은 마커를 다시 누르면 해제, 다른 마커를 누르면 그쪽으로 옮겨 고정한다.
+      const same = sunTipPinned && $('#sunTlTip').text() === $(this).attr('data-tip');
+      if (same) { hideSunTip(); return; }
+      sunTipPinned = true;
+      showSunTip($(this));
+    });
+
+  $(document).on('click', function() { if (sunTipPinned) hideSunTip(); });
 
   // ── 섹션 2: 오늘/내일/모레 일출·일몰 ──
   function renderSunDays(now, lat, lon) {

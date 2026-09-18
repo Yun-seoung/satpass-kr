@@ -177,11 +177,34 @@ td .note{display:block}
 .sun-tl-seg.day{background:#1a3a5c}
 .sun-tl-seg.prime{background:#4A90D9}
 
-/* 위성 패스 마커 (최적 구간에 걸치면 금색) */
-.sun-tl-pass{position:absolute;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;
+/* 위성 패스 마커 (최적 구간에 걸치면 주황색) */
+.sun-tl-pass{position:absolute;top:50%;width:14px;height:14px;margin:-7px 0 0 -7px;
              border-radius:50%;background:#E1E3EA;border:1px solid rgba(11,13,23,.7);
-             cursor:help;z-index:2}
+             cursor:pointer;z-index:2;
+             transition:transform .2s var(--ease), box-shadow .2s var(--ease)}
+.sun-tl-pass:hover,.sun-tl-pass:focus{transform:scale(1.25);outline:none;
+                                      box-shadow:0 0 0 3px rgba(225,227,234,.25)}
 .sun-tl-pass.is-prime{background:#FFB800;box-shadow:0 0 8px rgba(255,184,0,.7)}
+.sun-tl-pass.is-prime:hover,.sun-tl-pass.is-prime:focus{box-shadow:0 0 0 3px rgba(255,184,0,.3)}
+
+/* 마커 위 상시 라벨 ("22:11 ISS") — 겹치면 JS가 아랫줄로 내린다 */
+.sun-tl-wrap{position:relative}
+.sun-tl-labels{position:relative}
+.sun-tl-label{position:absolute;transform:translateX(-50%);white-space:nowrap;
+              font-size:.75rem;line-height:17px;color:var(--muted)}
+.sun-tl-label.is-prime{color:#FFB800;font-weight:600}
+.sun-tl-label.at-start{transform:none}
+.sun-tl-label.at-end{transform:translateX(-100%)}
+
+/* 마커 상세 툴팁 (호버/클릭) */
+.sun-tl-tip{position:absolute;top:calc(100% + 9px);transform:translateX(-50%);
+            display:none;white-space:nowrap;z-index:5;
+            background:var(--panel2);border:1px solid var(--line);border-radius:6px;
+            padding:7px 11px;font-size:.8rem;color:var(--ink);
+            box-shadow:0 6px 20px rgba(0,0,0,.45)}
+.sun-tl-tip.is-on{display:block}
+.sun-tl-tip.at-start{transform:none}
+.sun-tl-tip.at-end{transform:translateX(-100%)}
 
 /* 현재 시각: 흰 세로선 + 위쪽 삼각형 마커.
    바의 왼쪽 끝(0%)에 놓이므로 overflow:hidden에 잘리지 않도록 안쪽으로 정렬한다. */
@@ -199,7 +222,8 @@ td .note{display:block}
 .sun-lg .sw.day{background:#1a3a5c}
 .sun-lg .sw.prime{background:#4A90D9}
 .sun-lg .sw.night{background:#0B0D17;border:1px solid var(--line)}
-.sun-lg .sw.dot{width:9px;height:9px;border-radius:50%;background:#E1E3EA}
+.sun-lg .sw.dot{width:11px;height:11px;border-radius:50%;background:#E1E3EA}
+.sun-lg .sw.dot.gold{background:#FFB800}
 
 /* 3일 일출·일몰 표 — 패스 테이블과 같은 스타일이되 클릭 대상은 아니다 */
 #sunDayTable tbody tr{cursor:default}
