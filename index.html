@@ -541,7 +541,8 @@ $(function () {
         $('#loginPrompt').hide();
         document.body.classList.remove('is-login-view');
         $('#appArea').css('opacity', 0).show();
-        requestAnimationFrame(() => $('#appArea').css('opacity', 1));
+        void $('#appArea')[0].offsetWidth;   // 리플로우 강제 (rAF는 백그라운드 탭에서 안 돈다)
+        $('#appArea').css('opacity', 1);
       }, 280);
     } else {
       document.body.classList.remove('is-login-view');
@@ -559,7 +560,12 @@ $(function () {
     currentOmm = null; currentPasses = []; currentSatName = '';
     issOmm = null; stopIssTimer(); $('#issMapSection').hide(); $('#bestSection').hide();
     $('#appArea').hide();
-    $('#loginPrompt').show();
+    // onLogin이 남겨 둔 인라인 opacity:0을 되돌리지 않으면 폼이 투명한 채로 다시 뜬다.
+    // rAF는 백그라운드 탭에서 실행되지 않아 opacity가 0에 멈추므로, 리플로우를 강제해
+    // 트랜지션 시작점만 잡고 같은 틱에서 1로 되돌린다.
+    $('#loginPrompt').css('opacity', 0).show();
+    void $('#loginPrompt')[0].offsetWidth;
+    $('#loginPrompt').css('opacity', 1);
     document.body.classList.add('is-login-view');
     // 로그인 폼이 상시 노출되므로, 직전에 회원가입 탭에 있었더라도 항상 로그인 탭부터 보여준다
     $('.tab').removeClass('active');
