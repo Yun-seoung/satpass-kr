@@ -345,7 +345,7 @@ td .note{display:block}
 .leaflet-tooltip-right::before{border-right-color:var(--line)}
 
 /* ── 스카이 플롯 ── */
-.sky-section{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+.sky-section{background:#0B0D17;border:1px solid var(--line);border-radius:var(--radius);
              padding:18px 20px;margin-top:20px;box-shadow:0 0 20px rgba(123,104,238,.06)}
 .sky-section h3{font-size:1rem;font-weight:600;margin-bottom:6px}
 
@@ -358,7 +358,7 @@ td .note{display:block}
 .sky-sub{color:var(--muted);font-size:.85rem;margin-bottom:16px}
 
 .sky-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
-.sky-step{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}
+.sky-step{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;text-align:center}
 .sky-step-icon{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;
                border-radius:50%;font-size:.8rem;font-weight:700;margin-bottom:6px}
 .sky-step-icon.start{background:var(--ok-bg);color:var(--ok)}
@@ -381,7 +381,7 @@ td .note{display:block}
   overflow:hidden;
   border-radius:14px;
   border:1px solid var(--line);
-  background:var(--bg);
+  background:#05070f;
 }
 .sky-globe-earth{
   position:absolute;
@@ -390,14 +390,23 @@ td .note{display:block}
   width:460px; height:460px;
   border-radius:50%;
   pointer-events:none;
+  /* 원은 460px인데 위쪽 110px만 화면에 들어온다(top:130px, 컨테이너 높이 240px).
+     그래서 모든 스톱을 세로 0~24% 안에 모아야 실제로 보인다 — 예전 값들은 30~45%에
+     있어서 전부 잘려 나갔고, 그 탓에 단색 돔처럼 보였다. */
   background:
-    radial-gradient(circle at 38% 20%, rgba(255,255,255,.42) 0%, rgba(255,255,255,.08) 10%, transparent 20%),
-    radial-gradient(circle at 53% 30%, rgba(255,255,255,.28) 0%, rgba(255,255,255,.05) 12%, transparent 22%),
-    radial-gradient(circle at 30% 40%, rgba(110,130,90,.32) 0%, rgba(110,130,90,.05) 14%, transparent 24%),
-    radial-gradient(circle at 55% 45%, rgba(95,75,55,.26) 0%, rgba(95,75,55,.05) 16%, transparent 26%),
-    radial-gradient(circle at 34% 24%, rgba(210,235,255,.42) 0%, rgba(210,235,255,.08) 14%, transparent 26%),
-    radial-gradient(circle at 38% 30%, #2f7bc0 0%, #1e5f9c 14%, #154a80 26%, #0c2f5c 44%, #061c3d 64%, #020c1e 84%, #00030a 100%);
-  box-shadow:0 0 0 1px rgba(160,205,255,.3), 0 0 60px 10px rgba(110,175,255,.28);
+    /* 태양빛이 닿는 지점 — 왼쪽 위 */
+    radial-gradient(circle at 30% 8%, rgba(255,255,255,.55) 0%, rgba(208,234,255,.28) 3%,
+                    rgba(130,185,255,.1) 7%, transparent 14%),
+    /* 하이라이트 주변으로 번지는 확산광 */
+    radial-gradient(circle at 32% 9%, rgba(150,200,255,.22) 0%, rgba(120,170,255,.07) 12%, transparent 26%),
+    /* 구체 본체 — 중심부 밝은 하늘색에서 가장자리 남색으로 */
+    radial-gradient(circle at 34% 10%, #5FA8EA 0%, #4A90D9 5%, #3670B4 10%, #24528A 16%,
+                    #143A64 24%, #0B2343 33%, #08162E 44%, #0B0D17 62%);
+  /* 대기 글로우 — 가장자리에서 부드럽게 번진다 */
+  box-shadow:
+    0 0 0 1px rgba(120,170,255,.35),
+    0 0 26px 2px rgba(120,170,255,.3),
+    0 0 72px 16px rgba(120,170,255,.18);
 }
 #skyCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 

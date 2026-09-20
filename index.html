@@ -1292,9 +1292,9 @@ $(function () {
 
     // 점을 직선 두 구간(시작→최고점→최고점→끝)으로 잇는다
     ctx.strokeStyle = '#4A90D9';
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 3.4;              // 점 크기 ↑
     ctx.lineCap = 'round';
-    ctx.setLineDash([1, 7]);
+    ctx.setLineDash([0.5, 4.6]);      // 점 간격 ↓ (기존 [1,7])
     ctx.beginPath();
     ctx.moveTo(xStart, dotY);
     ctx.lineTo(xPeak, peakDotY);
@@ -1321,15 +1321,15 @@ $(function () {
     }
 
     // 시작(AOS) — 초록
-    dot(xStart, dotY, 6, '#3DDC84');
+    dot(xStart, dotY, 7.5, '#3DDC84');
     labelText(azNameKo(p.aosAz), xStart, dotY, '#3DDC84');
 
     // 끝(LOS) — 빨강
-    dot(xEnd, dotY, 6, '#FF4444');
+    dot(xEnd, dotY, 7.5, '#FF4444');
     labelText(azNameKo(p.losAz), xEnd, dotY, '#FF4444');
 
     // 최고점(TCA) — 보라
-    dot(xPeak, peakDotY, 5, '#7B68EE');
+    dot(xPeak, peakDotY, 6.5, '#7B68EE');
     labelText(`${p.maxEl.toFixed(0)}°`, xPeak, peakDotY, '#7B68EE');
   }
 
