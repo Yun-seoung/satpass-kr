@@ -118,25 +118,33 @@
 
     <!-- 우주기상 -->
     <div class="wx-row">
+      <!-- 각 카드는 [본문(.wx-body) + 각주(.kp-small)] 2단. 본문이 flex:1로 늘어나
+           각주를 카드 맨 아래로 밀어, 본문 줄 수와 무관하게 구분선 높이가 맞는다. -->
       <div class="wx-card wx-main">
-        <div class="k">오늘 밤 우주기상</div>
-        <div class="emoji" id="kpEmoji">—</div>
-        <div class="headline" id="kpHeadline">불러오는 중…</div>
-        <div class="desc" id="kpDesc"></div>
+        <div class="wx-body">
+          <div class="k">오늘 밤 우주기상</div>
+          <div class="emoji" id="kpEmoji">—</div>
+          <div class="headline" id="kpHeadline">불러오는 중…</div>
+          <div class="desc" id="kpDesc"></div>
+        </div>
         <div class="kp-small" id="kpNowSub"></div>
       </div>
       <div class="wx-card">
-        <div class="k">오늘 밤 관측 전망</div>
-        <div class="line hint" id="outlookLine">불러오는 중…</div>
-        <div class="desc" id="outlookDesc"></div>
+        <div class="wx-body">
+          <div class="k">오늘 밤 관측 전망</div>
+          <div class="line hint" id="outlookLine">불러오는 중…</div>
+          <div class="desc" id="outlookDesc"></div>
+        </div>
         <!-- 각주("24시간 예보 기준 · NOAA") — 왼쪽 카드의 kp-small과 같은 자리·같은 모양 -->
         <div class="kp-small" id="outlookSub"></div>
       </div>
       <div class="wx-card">
-        <div class="k">다음 통과</div>
-        <div class="line hint" id="nextPassLine">위성을 선택하고 계산해주세요</div>
-        <div class="sub" id="nextPassSub"></div>
-        <div class="desc" id="nextPassDesc"></div>
+        <div class="wx-body">
+          <div class="k">다음 통과</div>
+          <div class="line hint" id="nextPassLine">위성을 선택하고 계산해주세요</div>
+          <div class="sub" id="nextPassSub"></div>
+          <div class="desc" id="nextPassDesc"></div>
+        </div>
         <div class="kp-small" id="nextPassFoot"></div>
       </div>
     </div>

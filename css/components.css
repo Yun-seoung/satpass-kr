@@ -73,7 +73,12 @@
 
 /* ── 우주기상 카드 ── */
 .wx-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;
-         box-shadow:0 0 20px rgba(74,144,217,.06)}
+         box-shadow:0 0 20px rgba(74,144,217,.06);
+         display:flex;flex-direction:column;height:100%}
+/* 본문이 남는 높이를 모두 먹어, 뒤따르는 각주가 카드 바닥에 붙는다.
+   margin-top:auto 대신 이 방식을 쓰는 이유 — 본문이 카드를 꽉 채운 경우에도
+   각주의 위쪽 여백(margin-top:10px)이 그대로 남아 구분선이 본문에 붙지 않는다. */
+.wx-body{flex:1 1 auto;min-width:0}
 .wx-card .k{font-size:.82rem;color:var(--muted);margin-bottom:4px}
 .wx-card .v{font-size:1.5rem;font-weight:600}
 .wx-card .sub{font-size:.8rem;color:var(--muted);margin-top:2px}
