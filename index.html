@@ -1345,6 +1345,41 @@ $(function () {
   $('#satSelect').on('change', issRefresh);
 
   // ── 스카이 플롯 ──
+  // AOS~LOS를 이만큼 등분해 실제로 전파한다. 3점(AOS·최고점·LOS)만 잇던 예전 방식은
+  // 앙각이 낮은 패스에서 궤적이 꺾인 선처럼 보였다. 값은 그대로 쓰고 밀도만 올린다.
+  const SKY_STEPS = 24;
+
+  // 패스 구간의 (앙각, 방위각, 진행률) 목록. passcalc.js의 lookAngles와 같은 계산이다.
+  function sampleSkyTrack(pass) {
+    if (!currentOmm || !currentStation || typeof satellite === 'undefined') return [];
+    let satrec;
+    try { satrec = satellite.json2satrec(currentOmm); } catch (err) { return []; }
+
+    const observer = {
+      latitude: satellite.degreesToRadians(currentStation.lat),
+      longitude: satellite.degreesToRadians(currentStation.lon),
+      height: 0.05
+    };
+    const t0 = pass.aos.getTime();
+    const span = pass.los.getTime() - t0;
+    const pts = [];
+
+    for (let i = 0; i <= SKY_STEPS; i++) {
+      const f = i / SKY_STEPS;
+      const d = new Date(t0 + span * f);
+      const pv = satellite.propagate(satrec, d);
+      if (!pv || !pv.position) continue;   // 궤도요소가 너무 오래됐거나 계산 실패
+      const gmst = satellite.gstime(d);
+      const la = satellite.ecfToLookAngles(observer, satellite.eciToEcf(pv.position, gmst));
+      pts.push({
+        el: satellite.radiansToDegrees(la.elevation),
+        az: (satellite.radiansToDegrees(la.azimuth) + 360) % 360,
+        f
+      });
+    }
+    return pts;
+  }
+
   function selectPass(idx) {
     if (!currentPasses.length || !currentPasses[idx] || !currentOmm || !currentStation) return;
     $('#passTbody tr').removeClass('sel');
@@ -1386,29 +1421,40 @@ $(function () {
 
     ctx.clearRect(0, 0, W, H);
 
-    // 시작/끝은 패스마다 흔들리지 않는 고정 자리에 그린다(지구본이 시작되는 130px보다
-    // 한참 위, 어두운 하늘 영역). 가운데(최고점)만 실제 앙각에 비례해 높이가 달라져서,
-    // 얼마나 높이 뜨는 패스인지 한눈에 보이게 한다 — 앙각이 낮을수록 시작/끝과 가까워지고,
-    // 90°(천정)에 가까울수록 더 높이 올라간다.
+    // 가로(x)는 패스 진행 시간, 세로(y)는 실제 앙각으로 잡는다. 앙각이 높을수록 위로
+    // 올라가 얼마나 높이 뜨는 패스인지 한눈에 보인다(0°면 시작/끝과 같은 선, 90°면 최상단).
     const padX = 46;
-    const dotY = 84;                 // 시작/끝 점 높이(고정)
-    const PEAK_Y_AT_0 = 84;          // 앙각 0°일 때 최고점 높이(시작/끝과 같은 선)
-    const PEAK_Y_AT_90 = 38;         // 앙각 90°(천정)일 때 최고점 높이(가장 위)
-    const elRatio = Math.min(Math.max(p.maxEl, 0), 90) / 90;
-    const peakDotY = PEAK_Y_AT_0 - elRatio * (PEAK_Y_AT_0 - PEAK_Y_AT_90);
-    const xStart = padX, xEnd = W - padX, xPeak = W / 2;
+    const dotY = 84;                 // 앙각 0°에 해당하는 높이
+    const PEAK_Y_AT_0 = 84;
+    const PEAK_Y_AT_90 = 38;         // 앙각 90°(천정)일 때 높이(가장 위)
+    const xStart = padX, xEnd = W - padX;
 
-    // 점을 직선 두 구간(시작→최고점→최고점→끝)으로 잇는다
+    const elToY = el =>
+      PEAK_Y_AT_0 - (Math.min(Math.max(el, 0), 90) / 90) * (PEAK_Y_AT_0 - PEAK_Y_AT_90);
+
+    // 실제 전파값으로 궤적을 만든다. 계산이 실패하면 예전처럼 3점으로 잇는다.
+    const track = sampleSkyTrack(p);
+    const curve = track.length >= 3
+      ? track.map(q => ({ x: xStart + (xEnd - xStart) * q.f, y: elToY(q.el), el: q.el }))
+      : [{ x: xStart, y: dotY, el: 0 },
+         { x: W / 2,  y: elToY(p.maxEl), el: p.maxEl },
+         { x: xEnd,   y: dotY, el: 0 }];
+
+    // 샘플 점을 순서대로 이으면 24등분만으로도 충분히 부드러운 곡선이 된다
     ctx.strokeStyle = '#4A90D9';
-    ctx.lineWidth = 3.4;              // 점 크기 ↑
+    ctx.lineWidth = 3.4;
     ctx.lineCap = 'round';
-    ctx.setLineDash([0.5, 4.6]);      // 점 간격 ↓ (기존 [1,7])
+    ctx.setLineDash([0.5, 4.6]);
     ctx.beginPath();
-    ctx.moveTo(xStart, dotY);
-    ctx.lineTo(xPeak, peakDotY);
-    ctx.lineTo(xEnd, dotY);
+    ctx.moveTo(curve[0].x, curve[0].y);
+    for (let i = 1; i < curve.length; i++) ctx.lineTo(curve[i].x, curve[i].y);
     ctx.stroke();
     ctx.setLineDash([]);
+
+    // 마커는 곡선과 어긋나지 않도록 궤적의 첫 점 / 최고 앙각 점 / 마지막 점을 그대로 쓴다
+    const pStart = curve[0];
+    const pEnd = curve[curve.length - 1];
+    const pPeak = curve.reduce((best, q) => (q.el > best.el ? q : best), curve[0]);
 
     ctx.font = '600 13px "IBM Plex Sans KR",sans-serif';
     ctx.textAlign = 'center';
@@ -1429,16 +1475,16 @@ $(function () {
     }
 
     // 시작(AOS) — 초록
-    dot(xStart, dotY, 7.5, '#3DDC84');
-    labelText(azNameKo(p.aosAz), xStart, dotY, '#3DDC84');
+    dot(pStart.x, pStart.y, 7.5, '#3DDC84');
+    labelText(azNameKo(p.aosAz), pStart.x, pStart.y, '#3DDC84');
 
     // 끝(LOS) — 빨강
-    dot(xEnd, dotY, 7.5, '#FF4444');
-    labelText(azNameKo(p.losAz), xEnd, dotY, '#FF4444');
+    dot(pEnd.x, pEnd.y, 7.5, '#FF4444');
+    labelText(azNameKo(p.losAz), pEnd.x, pEnd.y, '#FF4444');
 
-    // 최고점(TCA) — 보라
-    dot(xPeak, peakDotY, 6.5, '#7B68EE');
-    labelText(`${p.maxEl.toFixed(0)}°`, xPeak, peakDotY, '#7B68EE');
+    // 최고점(TCA) — 보라. 숫자는 표·설명과 같은 값(p.maxEl)을 쓰고 위치만 궤적에 맞춘다.
+    dot(pPeak.x, pPeak.y, 6.5, '#7B68EE');
+    labelText(`${p.maxEl.toFixed(0)}°`, pPeak.x, pPeak.y, '#7B68EE');
   }
 
   // ── 패스 계산 ──
