@@ -10,9 +10,9 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <!-- ?v= : Apache가 CSS에 Cache-Control을 주지 않아 브라우저가 휴리스틱 캐시로
      옛 스타일을 계속 쓰는 일이 있었다. 스타일을 고치면 이 값을 함께 올린다. -->
-<link rel="stylesheet" href="css/base.css?v=2.7">
-<link rel="stylesheet" href="css/components.css?v=2.7">
-<link rel="stylesheet" href="css/layout.css?v=2.7">
+<link rel="stylesheet" href="css/base.css?v=2.8">
+<link rel="stylesheet" href="css/components.css?v=2.8">
+<link rel="stylesheet" href="css/layout.css?v=2.8">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
 </head>
 <body class="is-login-view">
@@ -135,6 +135,7 @@
         <div class="wx-body">
           <div class="k">오늘 밤 관측 전망</div>
           <div class="line hint" id="outlookLine">불러오는 중…</div>
+          <div class="sub" id="outlookNote"></div>
           <div class="desc" id="outlookDesc"></div>
         </div>
         <!-- 각주("24시간 예보 기준 · NOAA") — 왼쪽 카드의 kp-small과 같은 자리·같은 모양 -->
@@ -349,7 +350,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/satellite.js@6.0.2/dist/satellite.min.js"></script>
-<script src="passcalc.js?v=2.7"></script>
+<script src="passcalc.js?v=2.8"></script>
 <script>
 $(function () {
   'use strict';
@@ -595,6 +596,7 @@ $(function () {
     $('#passTbody').html('<tr class="empty-row"><td colspan="6">위성을 고르고 계산 버튼을 누르세요.</td></tr>');
     $('#skySection').hide();
     $('#outlookLine').addClass('hint').text('불러오는 중…');
+    $('#outlookNote').text('');
     $('#outlookDesc').text('');
     $('#outlookSub').text('');
     $('#nextPassLine').addClass('hint').text('위성을 선택하고 계산해주세요');
@@ -629,11 +631,13 @@ $(function () {
     return               { emoji:'☀️', headline:'매우 조용',     desc:'지자기 활동이 거의 없어요. 위성 관측에 아주 좋은 조건이에요.' };
   }
 
-  // 24시간 최대 예보 Kp → "오늘 밤 관측 전망" 카드 문구
+  // 24시간 최대 예보 Kp → "오늘 밤 관측 전망" 카드 문구.
+  // 한 줄로 길게 쓰던 것을 제목/부제 두 줄로 나눈다 — 다른 두 카드도 값이 두 줄이라
+  // (이모지+헤드라인 / 시각+부제) 값 영역 높이가 맞는다.
   function outlookMessage(maxKp) {
-    if (maxKp >= 7) return '🔴 나쁨 — 강한 폭풍 예보, 관측 영향 가능';
-    if (maxKp >= 5) return '⚠️ 주의 — 약한 지자기 폭풍 예보';
-    return '✅ 관측 좋음 — 폭풍 예보 없음';
+    if (maxKp >= 7) return { line: '🔴 나쁨',      sub: '강한 폭풍 예보, 관측 영향 가능' };
+    if (maxKp >= 5) return { line: '⚠️ 주의',      sub: '약한 지자기 폭풍 예보' };
+    return            { line: '✅ 관측 좋음', sub: '폭풍 예보 없음' };
   }
 
   // 같은 Kp 경계로 갈리는 두 줄 설명 (왼쪽 우주기상 카드와 같은 톤)
@@ -676,11 +680,14 @@ $(function () {
       }
       if (in24.length) {
         const maxKp = Math.max(...in24.map(r => Number(r.kp)));
-        $('#outlookLine').removeClass('hint').text(outlookMessage(maxKp));
+        const outlook = outlookMessage(maxKp);
+        $('#outlookLine').removeClass('hint').text(outlook.line);
+        $('#outlookNote').text(outlook.sub);
         $('#outlookDesc').text(outlookDesc(maxKp));
         $('#outlookSub').text('24시간 예보 기준 · NOAA');
       } else {
         $('#outlookLine').addClass('hint').text('예보 정보 없음');
+        $('#outlookNote').text('');
         $('#outlookDesc').text('');
         $('#outlookSub').text('');
       }

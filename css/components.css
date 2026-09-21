@@ -97,6 +97,7 @@
                line-height:1.5;word-break:keep-all}
 .wx-card .kp-small{font-size:.75rem;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
 /* 내용이 없을 때(계산 전 등) 구분선·여백만 남지 않도록 */
+.wx-card .sub:empty,
 .wx-card .desc:empty,
 .wx-card .kp-small:empty{display:none}
 
