@@ -273,6 +273,9 @@
 
         <div class="sun-tl-wrap">
           <div class="sun-tl-labels" id="sunTlLabels"></div>
+          <div class="sun-tl-nowrow">
+            <span class="sun-tl-now-top" id="sunTlNowTop">지금</span>
+          </div>
           <div class="sun-tl" id="sunTimeline"></div>
           <div class="sun-tl-tip" id="sunTlTip"></div>
         </div>
@@ -285,6 +288,7 @@
           <span class="sun-lg"><i class="sw night"></i>밤</span>
           <span class="sun-lg"><i class="sw dot gold"></i>최적 구간 패스</span>
           <span class="sun-lg"><i class="sw dot"></i>일반 패스</span>
+          <span class="sun-lg"><i class="sw now"></i>현재 시각</span>
         </div>
       </section>
 
@@ -856,6 +860,8 @@ $(function () {
     // 현재 시각은 늘 바의 시작점(0%)이다.
     html += `<div class="sun-tl-now" style="left:${pos(start)}%"></div>`;
     $('#sunTimeline').html(html);
+    // 바 위쪽의 "지금" 라벨·삼각형도 세로선과 같은 x에 둔다(안쪽 4px는 CSS에서 준다)
+    $('#sunTlNowTop').css('left', pos(start) + '%');
 
     const usedRows = rowLastX.filter(x => x > -Infinity).length;
     $('#sunTlLabels').css('height', usedRows * LABEL_ROW_H + 'px').html(labelHtml);

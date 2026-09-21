@@ -206,12 +206,25 @@ td .note{display:block}
 .sun-tl-tip.at-start{transform:none}
 .sun-tl-tip.at-end{transform:translateX(-100%)}
 
-/* 현재 시각: 흰 세로선 + 위쪽 삼각형 마커.
-   바의 왼쪽 끝(0%)에 놓이므로 overflow:hidden에 잘리지 않도록 안쪽으로 정렬한다. */
-.sun-tl-now{position:absolute;top:0;bottom:0;width:2px;background:#fff;z-index:3}
-.sun-tl-now::before{content:"";position:absolute;top:0;left:0;
-                    border-left:5px solid transparent;border-right:5px solid transparent;
-                    border-top:6px solid #fff}
+/* 현재 시각 — 바 안에는 흰 세로선만, "지금" 라벨과 삼각형은 바 위쪽에 둔다.
+   바가 border-radius:8px + overflow:hidden이라 삼각형을 바 안 왼쪽 위에 놓으면
+   둥근 모서리에 대부분 잘려 흰 조각만 남는다(y=0에서 내부 경계가 x=8px부터라
+   4px 안쪽으로 밀어도 해결되지 않는다). 바 밖으로 빼면 선 위치는 그대로 두고
+   삼각형도 온전히 보인다. */
+.sun-tl-now{position:absolute;top:0;bottom:0;width:2px;margin-left:4px;background:#fff;z-index:3}
+
+.sun-tl-nowrow{position:relative;height:18px}
+/* left는 JS가 세로선과 같은 %로 넣는다.
+   세로선은 바 안쪽(테두리 1px + margin 4px)에서 폭 2px이므로 중심이 6px —
+   바 밖에 있는 이 요소는 테두리가 없어 margin-left로 6px를 직접 맞춘다. */
+.sun-tl-now-top{position:absolute;left:0;bottom:0;margin-left:6px;padding-bottom:7px;
+                font-size:.68rem;font-weight:700;line-height:1;color:#fff;
+                white-space:nowrap;pointer-events:none;
+                text-shadow:0 1px 3px rgba(4,6,16,.9)}
+/* 아래(바)를 가리키는 삼각형 — 세로선 중심에 맞춘다 */
+.sun-tl-now-top::after{content:"";position:absolute;left:0;bottom:0;transform:translateX(-50%);
+                       border-left:5px solid transparent;border-right:5px solid transparent;
+                       border-top:6px solid #fff}
 
 .sun-tl-hint{font-size:.78rem;color:var(--muted);margin-top:8px;min-height:1.2em}
 
@@ -224,6 +237,9 @@ td .note{display:block}
 .sun-lg .sw.night{background:#0B0D17;border:1px solid var(--line)}
 .sun-lg .sw.dot{width:11px;height:11px;border-radius:50%;background:#E1E3EA}
 .sun-lg .sw.dot.gold{background:#FFB800}
+.sun-lg .sw.now{width:0;height:0;border-radius:0;background:none;
+                border-left:5px solid transparent;border-right:5px solid transparent;
+                border-top:6px solid #fff}
 
 /* 3일 일출·일몰 표 — 패스 테이블과 같은 스타일이되 클릭 대상은 아니다 */
 #sunDayTable tbody tr{cursor:default}
