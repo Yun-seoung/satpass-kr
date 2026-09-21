@@ -128,12 +128,16 @@
       <div class="wx-card">
         <div class="k">오늘 밤 관측 전망</div>
         <div class="line hint" id="outlookLine">불러오는 중…</div>
-        <div class="sub" id="outlookSub"></div>
+        <div class="desc" id="outlookDesc"></div>
+        <!-- 각주("24시간 예보 기준 · NOAA") — 왼쪽 카드의 kp-small과 같은 자리·같은 모양 -->
+        <div class="kp-small" id="outlookSub"></div>
       </div>
       <div class="wx-card">
         <div class="k">다음 통과</div>
         <div class="line hint" id="nextPassLine">위성을 선택하고 계산해주세요</div>
         <div class="sub" id="nextPassSub"></div>
+        <div class="desc" id="nextPassDesc"></div>
+        <div class="kp-small" id="nextPassFoot"></div>
       </div>
     </div>
 
@@ -581,9 +585,12 @@ $(function () {
     $('#passTbody').html('<tr class="empty-row"><td colspan="6">위성을 고르고 계산 버튼을 누르세요.</td></tr>');
     $('#skySection').hide();
     $('#outlookLine').addClass('hint').text('불러오는 중…');
+    $('#outlookDesc').text('');
     $('#outlookSub').text('');
     $('#nextPassLine').addClass('hint').text('위성을 선택하고 계산해주세요');
     $('#nextPassSub').text('');
+    $('#nextPassDesc').text('');
+    $('#nextPassFoot').text('');
   }
 
   function renderStation() {
@@ -619,6 +626,20 @@ $(function () {
     return '✅ 관측 좋음 — 폭풍 예보 없음';
   }
 
+  // 같은 Kp 경계로 갈리는 두 줄 설명 (왼쪽 우주기상 카드와 같은 톤)
+  function outlookDesc(maxKp) {
+    if (maxKp >= 7) return '강한 지자기 폭풍이 예보돼 있어요. 통신 위성 관측 시 참고하세요.';
+    if (maxKp >= 5) return '약한 지자기 폭풍이 예보돼 있어요. 대부분의 관측에는 큰 영향이 없어요.';
+    return '앞으로 24시간 동안 지자기 폭풍 예보가 없어요. 오늘 밤 위성 관측 계획하기 좋은 시간대예요.';
+  }
+
+  // 다음 통과 카드 설명 — 최고 앙각이 얼마나 높은지를 눈높이에서 풀어 쓴다
+  function nextPassDesc(maxEl) {
+    if (maxEl >= 60) return '머리 위로 높이 지나가요. 이번 주 가장 잘 보이는 패스 중 하나예요.';
+    if (maxEl >= 30) return '하늘 중간 높이로 지나가요. 맨눈으로 잘 보여요.';
+    return '지평선 가까이 낮게 지나가요. 건물이나 나무에 가릴 수 있어요.';
+  }
+
   function loadWeather() {
     const kpReq = api({ src:'kp' }).then(r=>r, e=>({ failed:e }));
     const fcReq = api({ src:'kp_forecast' }).then(r=>r, e=>({ failed:e }));
@@ -646,9 +667,11 @@ $(function () {
       if (in24.length) {
         const maxKp = Math.max(...in24.map(r => Number(r.kp)));
         $('#outlookLine').removeClass('hint').text(outlookMessage(maxKp));
+        $('#outlookDesc').text(outlookDesc(maxKp));
         $('#outlookSub').text('24시간 예보 기준 · NOAA');
       } else {
         $('#outlookLine').addClass('hint').text('예보 정보 없음');
+        $('#outlookDesc').text('');
         $('#outlookSub').text('');
       }
     });
@@ -1446,6 +1469,8 @@ $(function () {
         $tb.append(`<tr class="empty-row"><td colspan="6">24시간 안에 최소 앙각 ${s.minEl}° 이상 통과하는 패스가 없습니다.</td></tr>`);
         $('#nextPassLine').addClass('hint').text('24시간 내 통과 없음');
         $('#nextPassSub').text('');
+        $('#nextPassDesc').text('');
+        $('#nextPassFoot').text('');
         return;
       }
 
@@ -1480,6 +1505,10 @@ $(function () {
         const minsLeft = Math.max(0, Math.round((nextPass.aos.getTime() - now.getTime()) / 60000));
         $('#nextPassLine').removeClass('hint').text(fmtKst(nextPass.aos));
         $('#nextPassSub').text(`약 ${fmtDurationMin(minsLeft)} 후 · 최고 ${nextPass.maxEl.toFixed(1)}°`);
+        $('#nextPassDesc').text(nextPassDesc(nextPass.maxEl));
+        // 각주: 위성명 · 방위(시작→끝) — 패스 표와 같은 16방위 표기
+        $('#nextPassFoot').text(
+          `${currentSatName || '위성'} · ${azName(nextPass.aosAz)} → ${azName(nextPass.losAz)}`);
       }
 
       // 다음 패스(가장 가까운 패스)를 기본으로 스카이 플롯에 표시

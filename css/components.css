@@ -83,8 +83,15 @@
 
 .wx-main .emoji{font-size:1.7rem;line-height:1}
 .wx-main .headline{font-size:1.08rem;font-weight:600;margin:6px 0 3px}
-.wx-main .desc{font-size:.82rem;color:var(--muted)}
-.wx-main .kp-small{font-size:.75rem;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+/* 설명·각주는 세 카드가 같은 모양을 쓴다 (.wx-main도 .wx-card라 좌측 카드는 그대로) */
+.wx-card .desc{font-size:.82rem;color:var(--muted)}
+.wx-card .kp-small{font-size:.75rem;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
+/* 오른쪽 두 카드는 설명이 값 바로 아래에 붙으므로 간격만 따로 준다.
+   왼쪽 카드는 headline의 margin이 이미 간격을 만들어 두어 건드리지 않는다. */
+.wx-card:not(.wx-main) .desc{margin-top:8px;line-height:1.5;word-break:keep-all}
+/* 내용이 없을 때(계산 전 등) 구분선·여백만 남지 않도록 */
+.wx-card .desc:empty,
+.wx-card .kp-small:empty{display:none}
 
 /* ── 위성 선택 + 계산 ── */
 .controls{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
