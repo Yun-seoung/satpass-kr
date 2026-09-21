@@ -78,7 +78,7 @@
 /* 본문이 남는 높이를 모두 먹어, 뒤따르는 각주가 카드 바닥에 붙는다.
    margin-top:auto 대신 이 방식을 쓰는 이유 — 본문이 카드를 꽉 채운 경우에도
    각주의 위쪽 여백(margin-top:10px)이 그대로 남아 구분선이 본문에 붙지 않는다. */
-.wx-body{flex:1 1 auto;min-width:0}
+.wx-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
 .wx-card .k{font-size:.82rem;color:var(--muted);margin-bottom:4px}
 .wx-card .v{font-size:1.5rem;font-weight:600}
 .wx-card .sub{font-size:.8rem;color:var(--muted);margin-top:2px}
@@ -89,11 +89,13 @@
 .wx-main .emoji{font-size:1.7rem;line-height:1}
 .wx-main .headline{font-size:1.08rem;font-weight:600;margin:6px 0 3px}
 /* 설명·각주는 세 카드가 같은 모양을 쓴다 (.wx-main도 .wx-card라 좌측 카드는 그대로) */
-.wx-card .desc{font-size:.82rem;color:var(--muted)}
+/* 값 영역 높이가 카드마다 다르다(이모지+헤드라인 / 헤드라인 / 시각+부제).
+   설명을 본문 맨 아래로 붙여, 남는 공간이 설명 아래가 아니라 위에 모이게 한다.
+   그래야 설명·구분선·각주 세 줄이 세 카드에서 같은 높이에 온다.
+   padding-top은 값 영역과 최소한의 간격을 보장한다(auto가 0으로 줄어드는 경우). */
+.wx-card .desc{font-size:.82rem;color:var(--muted);margin-top:auto;padding-top:8px;
+               line-height:1.5;word-break:keep-all}
 .wx-card .kp-small{font-size:.75rem;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
-/* 오른쪽 두 카드는 설명이 값 바로 아래에 붙으므로 간격만 따로 준다.
-   왼쪽 카드는 headline의 margin이 이미 간격을 만들어 두어 건드리지 않는다. */
-.wx-card:not(.wx-main) .desc{margin-top:8px;line-height:1.5;word-break:keep-all}
 /* 내용이 없을 때(계산 전 등) 구분선·여백만 남지 않도록 */
 .wx-card .desc:empty,
 .wx-card .kp-small:empty{display:none}
