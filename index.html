@@ -307,9 +307,9 @@
         </div>
       </section>
 
-      <!-- 섹션 3: 오늘의 최적 관측 구간 -->
+      <!-- 섹션 3: 다가오는 최적 관측 구간 (지금 기준 가장 가까운 두 구간) -->
       <section class="sun-section sun-section-last">
-        <h3 class="sun-h">오늘의 최적 관측 구간</h3>
+        <h3 class="sun-h">다가오는 최적 관측 구간</h3>
 
         <div class="sun-prime-grid">
           <div class="sun-prime-card">
@@ -789,6 +789,35 @@ $(function () {
   const passHitsPrime = (p, windows) =>
     windows.some(w => p.aos.getTime() <= w.to && p.los.getTime() >= w.from);
 
+  // 지금 기준으로 가장 가까운 일몰 후 / 일출 전 구간을 하나씩 고른다.
+  // "아직 끝나지 않은" 구간을 고르는 것이 핵심 — 일몰 직후(구간 진행 중)에
+  // 시작 시각만 보고 내일로 건너뛰면, 정작 지금 나가야 할 구간을 놓친다.
+  function nextPrimeWindows(now, lat, lon) {
+    const t = now.getTime();
+    const today = kstMidnight(now).getTime();
+    const days = [today, today + DAY_MS, today + 2 * DAY_MS]
+      .map(d => sunDayInfo(d, lat, lon));
+
+    const pick = isEve => {
+      for (const info of days) {              // 오늘 → 내일 → 모레 순
+        if (!info) continue;
+        const w = isEve
+          ? { from: info.set, to: info.set + PRIME_WINDOW_MS }
+          : { from: info.rise - PRIME_WINDOW_MS, to: info.rise };
+        if (w.to > t) return w;
+      }
+      return null;
+    };
+    return { evening: pick(true), morning: pick(false) };
+  }
+
+  // 구간·패스가 오늘인지 내일인지 (KST 자정 기준)
+  function sunDayWord(ms, now) {
+    const diff = Math.round(
+      (kstMidnight(new Date(ms)).getTime() - kstMidnight(now).getTime()) / DAY_MS);
+    return diff <= 0 ? '오늘' : (diff === 1 ? '내일' : '모레');
+  }
+
   // ── 섹션 1: 지금부터 24시간 타임라인 ──
   const LABEL_ROW_H = 17;   // 라벨 한 줄 높이(px)
   const LABEL_ROWS = 3;     // 겹칠 때 계단식으로 내려갈 수 있는 최대 줄 수
@@ -949,42 +978,62 @@ $(function () {
     });
   }
 
-  // ── 섹션 3: 오늘의 최적 관측 구간 ──
+  // ── 섹션 3: 다가오는 최적 관측 구간 ──
+  // 타임라인과 같은 기준(지금부터 24시간)을 쓴다. 예전엔 오늘 캘린더 날짜의
+  // 구간으로 고정 계산해서, 이미 지난 오늘 새벽 구간과 비교하느라 내일 새벽
+  // 패스를 "구간 내 패스 없음"으로 흘려보냈다.
   function renderSunPrime(now, lat, lon) {
-    const dayStart = kstMidnight(now).getTime();
-    const info = sunDayInfo(dayStart, lat, lon);
+    const { evening, morning } = nextPrimeWindows(now, lat, lon);
     const range = w => `${fmtHm(new Date(w.from))} ~ ${fmtHm(new Date(w.to))}`;
+    // 카드 제목(.t)에 오늘/내일을 붙인다 — id·class는 그대로 두고 텍스트만 바꾼다.
+    const setTitle = (sel, text) =>
+      $(sel).closest('.sun-prime-card').find('.t').text(text);
 
-    if (!info) {
-      $('#sunPrimeMorn').text('—');
+    if (!evening && !morning) {
       $('#sunPrimeEve').text('—');
-      $('#sunPrimePass').removeClass('is-hit').text('이 위치에서는 오늘 일출·일몰이 없어요');
+      $('#sunPrimeMorn').text('—');
+      $('#sunPrimePass').removeClass('is-hit').text('이 위치에서는 일출·일몰이 없어요');
       return;
     }
 
-    const [morning, evening] = info.windows;
-    $('#sunPrimeMorn').text(range(morning));
-    $('#sunPrimeEve').text(range(evening));
+    if (evening) {
+      $('#sunPrimeEve').text(range(evening));
+      setTitle('#sunPrimeEve', `🌅 ${sunDayWord(evening.from, now)} 일몰 후 최적 구간`);
+    } else {
+      $('#sunPrimeEve').text('—');
+    }
+
+    if (morning) {
+      $('#sunPrimeMorn').text(range(morning));
+      setTitle('#sunPrimeMorn', `🌄 ${sunDayWord(morning.to, now)} 일출 전 최적 구간`);
+    } else {
+      $('#sunPrimeMorn').text('—');
+    }
 
     if (!currentPasses.length) {
       $('#sunPrimePass').removeClass('is-hit').text('위성 통과 탭에서 먼저 계산해주세요');
       return;
     }
 
+    // 타임라인에 찍힌 패스와 같은 범위를 본다.
+    const start = now.getTime(), end = start + DAY_MS;
+    const windows = [evening, morning].filter(Boolean);
     const hits = currentPasses.filter(p => {
       const a = p.aos.getTime();
-      return a >= dayStart && a < dayStart + DAY_MS && passHitsPrime(p, info.windows);
+      return a >= start && a <= end && passHitsPrime(p, windows);
     });
 
     if (!hits.length) {
-      $('#sunPrimePass').removeClass('is-hit').text('오늘 최적 구간 내 위성 패스가 없어요');
+      $('#sunPrimePass').removeClass('is-hit')
+        .text('앞으로 24시간 안에 최적 구간과 겹치는 패스가 없어요');
       return;
     }
 
     $('#sunPrimePass').addClass('is-hit').html(
       hits.map(p =>
-        `✨ 오늘 ${fmtHm(p.aos)} ${escAttr(currentSatName || '위성')} 패스가 ` +
-        `최적 관측 구간이에요 — 최고 ${p.maxEl.toFixed(1)}°`
+        `✨ ${sunDayWord(p.aos.getTime(), now)} ${fmtHm(p.aos)} ` +
+        `${escAttr(currentSatName || '위성')} 패스가 최적 관측 구간이에요 — ` +
+        `최고 ${p.maxEl.toFixed(1)}°`
       ).join('<br>')
     );
   }
