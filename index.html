@@ -681,26 +681,27 @@ $(function () {
   // ── 오늘의 달 (SunCalc) ──
   const DEFAULT_MOON_STATION = { lat: 36.3504, lon: 127.3845 }; // 대전
 
-  function moonEmoji(pct) {
-    if (pct <= 6)  return '🌑';
-    if (pct <= 19) return '🌒';
-    if (pct <= 31) return '🌓';
-    if (pct <= 44) return '🌔';
-    if (pct <= 56) return '🌕';
-    if (pct <= 69) return '🌖';
-    if (pct <= 81) return '🌗';
-    return '🌘';
-  }
+  // 월령 8단계 — SunCalc의 phase(0=삭 → 0.5=보름 → 1=삭)를 기준으로 한다.
+  // 조도(fraction)는 차오를 때와 줄어들 때 같은 값이 나와 방향을 구분할 수 없다.
+  // 예전엔 이모지만 pct(조도) 기준이고 이름은 phase 기준이라 둘이 어긋났고,
+  // "다음 보름달까지 5일"(차오르는 중)인데 줄어드는 중 이모지(🌗)가 나왔다.
+  // 이모지와 이름을 한 표에서 같이 꺼내 다시 어긋날 수 없게 한다.
+  const MOON_PHASES = [
+    { until: 0.0625, emoji: '🌑', name: '삭' },
+    { until: 0.1875, emoji: '🌒', name: '초승달' },
+    { until: 0.3125, emoji: '🌓', name: '상현달' },
+    { until: 0.4375, emoji: '🌔', name: '상현망' },
+    { until: 0.5625, emoji: '🌕', name: '보름달' },
+    { until: 0.6875, emoji: '🌖', name: '하현망' },
+    { until: 0.8125, emoji: '🌗', name: '하현달' },
+    { until: 0.9375, emoji: '🌘', name: '그믐달' },
+    { until: 1,      emoji: '🌑', name: '삭' }
+  ];
 
-  function moonPhaseName(phase) {
-    if (phase < 0.03 || phase > 0.97) return '삭 (신월)';
-    if (phase < 0.22) return '초승달';
-    if (phase < 0.28) return '상현';
-    if (phase < 0.47) return '상현망';
-    if (phase < 0.53) return '보름달 (망)';
-    if (phase < 0.72) return '하현망';
-    if (phase < 0.78) return '하현';
-    return '그믐달';
+  function moonPhaseInfo(phase) {
+    // phase는 0~1 범위지만, 혹시 벗어나더라도 한 주기 안으로 감싼다.
+    const p = ((phase % 1) + 1) % 1;
+    return MOON_PHASES.find(step => p < step.until) || MOON_PHASES[MOON_PHASES.length - 1];
   }
 
   const fmtHm = d => d.toLocaleString('ko-KR', {
@@ -716,8 +717,10 @@ $(function () {
     const illum = SunCalc.getMoonIllumination(now);
     const pct = Math.round(illum.fraction * 100);
 
-    $('#moonEmoji').text(moonEmoji(pct));
-    $('#moonPhaseName').text(`${moonPhaseName(illum.phase)} — ${pct}% 차 있음`);
+    // 이모지·이름은 phase 기준, "N% 차 있음"은 그대로 조도(fraction) 기준
+    const moon = moonPhaseInfo(illum.phase);
+    $('#moonEmoji').text(moon.emoji);
+    $('#moonPhaseName').text(`${moon.name} — ${pct}% 차 있음`);
 
     const times = SunCalc.getMoonTimes(now, lat, lon);
     $('#moonRise').text(times.rise ? fmtHm(times.rise) : (times.alwaysUp ? '하루 종일 떠 있음' : '오늘은 뜨지 않음'));
