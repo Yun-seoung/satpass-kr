@@ -274,7 +274,7 @@
         <div class="sun-tl-wrap">
           <div class="sun-tl-labels" id="sunTlLabels"></div>
           <div class="sun-tl-nowrow">
-            <span class="sun-tl-now-top" id="sunTlNowTop">지금</span>
+            <span class="sun-tl-now-mark" id="sunTlNowMark"></span>
           </div>
           <div class="sun-tl" id="sunTimeline"></div>
           <div class="sun-tl-tip" id="sunTlTip"></div>
@@ -834,7 +834,12 @@ $(function () {
     const minGap = (78 / barW) * 100;
     const rowLastX = new Array(LABEL_ROWS).fill(-Infinity);
     const shortName = shortSatName(currentSatName);
-    let labelHtml = '';
+
+    // "지금" 배지는 패스 라벨과 같은 줄(맨 아랫줄)의 맨 앞을 차지한다.
+    // rowLastX[0]을 미리 채워 두면, 가까운 패스 라벨은 자동으로 아랫줄로 내려간다.
+    // (덕분에 패스가 하나도 없어도 라벨 줄 높이가 0이 되지 않는다)
+    let labelHtml = `<span class="sun-tl-now-badge" style="left:${pos(start)}%">지금</span>`;
+    rowLastX[0] = pos(start);
 
     shown.forEach(p => {
       const x = pos(p.aos.getTime());
@@ -860,8 +865,8 @@ $(function () {
     // 현재 시각은 늘 바의 시작점(0%)이다.
     html += `<div class="sun-tl-now" style="left:${pos(start)}%"></div>`;
     $('#sunTimeline').html(html);
-    // 바 위쪽의 "지금" 라벨·삼각형도 세로선과 같은 x에 둔다(안쪽 4px는 CSS에서 준다)
-    $('#sunTlNowTop').css('left', pos(start) + '%');
+    // 바 위 다이아몬드도 세로선과 같은 x에 둔다(안쪽 4px는 CSS에서 준다)
+    $('#sunTlNowMark').css('left', pos(start) + '%');
 
     const usedRows = rowLastX.filter(x => x > -Infinity).length;
     $('#sunTlLabels').css('height', usedRows * LABEL_ROW_H + 'px').html(labelHtml);
