@@ -1413,7 +1413,7 @@ $(function () {
 
     ctx.clearRect(0, 0, W, H);
 
-    const LABEL_PAD = 46;   // 방위 라벨이 좌우로 잘리지 않을 만큼의 여백
+    const START_FRAC = 0.15, END_FRAC = 0.85;  // 시작·종료 마커의 가로 위치(캔버스 비율)
     const BOTTOM_PAD = 12;  // 표면 위의 점이 캔버스 아래로 잘리지 않을 만큼의 여백
     const PEAK_Y_AT_90 = 36;// 앙각 90°(천정)일 때 최고점 높이 — 캔버스 위쪽
 
@@ -1422,23 +1422,16 @@ $(function () {
     const g = skyGlobeGeometry(canvas) || { cx: W / 2, cy: 360, r: 230 };
     const surfaceY = x => g.cy - Math.sqrt(Math.max(g.r * g.r - (x - g.cx) * (x - g.cx), 0));
 
-    // 좌우로 벌릴 수 있는 최대 폭 — 표면이 캔버스 아래로 내려가기 전까지,
-    // 그리고 라벨이 잘리지 않는 범위까지.
+    // 시작·종료 마커는 패스마다 흔들리지 않게 항상 같은 가로 위치에 둔다.
+    // 방위각은 라벨 텍스트로만 알려주고, 곡선의 좌우 폭에는 반영하지 않는다.
+    // 다만 좁은 화면에서 캔버스가 지구본(460px 고정)보다 넓어지면 15%/85% 지점이
+    // 보이는 돔 밖으로 나가 마커가 캔버스 아래로 사라지므로, 표면이 캔버스 바닥에
+    // 닿는 지점까지로만 제한한다.
     const dy = g.cy - (H - BOTTOM_PAD);
-    const halfSpan = Math.min(
-      g.cx - LABEL_PAD, W - LABEL_PAD - g.cx,
-      (dy > 0 && dy < g.r) ? Math.sqrt(g.r * g.r - dy * dy) : g.r
-    );
-
-    // 방위각 → 가로 위치. 지평선(원)을 옆에서 본 것으로 보고, 패스의 가운데 방위를
-    // 화면 중앙에 둔 뒤 시작·끝의 방위각 차이를 sin으로 투영한다. 부호는 진행 방향
-    // (방위각이 커지는 쪽 = 오른쪽). 두 방위가 가까우면 곡선이 세로선처럼 찌그러지므로
-    // 최소 폭 0.5를 준다.
-    const sweep = ((p.losAz - p.aosAz + 540) % 360) - 180;   // -180~180
-    const spread = Math.max(Math.abs(Math.sin(sweep * Math.PI / 360)), 0.5);
-    const dir = sweep >= 0 ? 1 : -1;
-    const xStart = g.cx - dir * halfSpan * spread;
-    const xEnd   = g.cx + dir * halfSpan * spread;
+    const maxDx = (dy > 0 && dy < g.r) ? Math.sqrt(g.r * g.r - dy * dy) : g.r;
+    const clampX = x => Math.min(Math.max(x, g.cx - maxDx), g.cx + maxDx);
+    const xStart = clampX(W * START_FRAC);
+    const xEnd   = clampX(W * END_FRAC);
     const yStart = surfaceY(xStart), yEnd = surfaceY(xEnd);
 
     // 최고점 — 가로는 시작·끝의 중간, 세로는 실제 최고 앙각에 비례해
