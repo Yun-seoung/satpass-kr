@@ -188,9 +188,9 @@
         </table>
       </div>
 
-      <!-- ISS 실시간 위치 지도 (ISS를 고른 경우에만 노출) -->
+      <!-- 실시간 위치 지도 — 통과를 계산한 위성의 현재 위치를 보여 준다 -->
       <section class="iss-map-section" id="issMapSection" style="display:none">
-        <h3 class="iss-map-h">🛰 ISS 현재 위치</h3>
+        <h3 class="iss-map-h">🛰 <span class="iss-map-sat">ISS</span> 현재 위치</h3>
 
         <p class="iss-map-hint" id="issMapHint">통과 시간 계산 후 지도가 표시됩니다</p>
 
@@ -200,7 +200,7 @@
         </div>
 
         <div class="iss-legend" id="issLegend" style="display:none">
-          <span class="iss-lg"><i class="ico">🛰</i>ISS 현재 위치</span>
+          <span class="iss-lg"><i class="ico">🛰</i><span class="iss-lg-sat">ISS</span> 현재 위치</span>
           <span class="iss-lg"><i class="dot station"></i>내 관측지</span>
           <span class="iss-lg"><i class="ring"></i>가시권 <em>(이 원 안으로 들어오면 지상에서 관측 가능)</em></span>
           <span class="iss-lg"><i class="dash"></i>앞으로 90분간 예상 궤도 <em>(날짜변경선에서 끊겨 보이는 건 정상)</em></span>
@@ -577,7 +577,7 @@ $(function () {
   function onLogout() {
     currentUser = null; currentStation = null;
     currentOmm = null; currentPasses = []; currentSatName = '';
-    issOmm = null; stopIssTimer(); $('#issMapSection').hide(); $('#bestSection').hide();
+    issOmm = null; issCatnr = ''; issSatName = ''; stopIssTimer(); $('#issMapSection').hide(); $('#bestSection').hide();
     $('#appArea').hide();
     // onLogin이 남겨 둔 인라인 opacity:0을 되돌리지 않으면 폼이 투명한 채로 다시 뜬다.
     // rAF는 백그라운드 탭에서 실행되지 않아 opacity가 0에 멈추므로, 리플로우를 강제해
@@ -699,7 +699,7 @@ $(function () {
     api({ src:'sats' }).done(r => {
       $('#satSelect').empty();
       r.data.forEach(s => $('<option>').val(s.catnr).text(s.name).appendTo('#satSelect'));
-      issRefresh(); // 기본 선택이 ISS면 바로 지도 영역을 보여 준다
+      issRefresh(); // 목록이 채워졌으니 지도 제목을 선택된 위성 이름으로 맞춘다
     });
   }
 
@@ -874,9 +874,12 @@ $(function () {
   const LABEL_ROW_H = 17;   // 라벨 한 줄 높이(px)
   const LABEL_ROWS = 3;     // 겹칠 때 계단식으로 내려갈 수 있는 최대 줄 수
 
-  // 라벨은 좁으므로 괄호 뒤를 떼고 짧게 쓴다 ("ISS (ZARYA)" → "ISS")
+  // 괄호 뒤 보조 이름을 뗀다 ("KOMPSAT-3A (아리랑 3A호)" → "KOMPSAT-3A")
+  const baseSatName = name => String(name || '위성').split('(')[0].trim() || '위성';
+
+  // 타임라인 라벨은 자리가 좁으므로 길이도 자른다
   function shortSatName(name) {
-    const base = String(name || '위성').split('(')[0].trim() || '위성';
+    const base = baseSatName(name);
     return base.length > 10 ? base.slice(0, 10) + '…' : base;
   }
 
@@ -1189,19 +1192,19 @@ $(function () {
     }, 0);
   }
 
-  // ── ISS 실시간 위치 지도 (Leaflet) ──
-  // 통과 계산에서 이미 받아 둔 ISS 궤도요소를 재사용한다 (api.php를 다시 부르지 않는다).
-  const ISS_CATNR = '25544';
+  // ── 실시간 위치 지도 (Leaflet) ──
+  // 통과 계산에서 이미 받아 둔 궤도요소를 재사용한다 (api.php를 다시 부르지 않는다).
+  // 위치·궤도·가시권 계산은 위성 종류와 무관하므로 목록의 모든 위성에 그대로 쓴다.
   const ISS_TICK_MS = 10000;          // 마커 갱신 주기
-  const ISS_ORBIT_MIN = 90;           // 앞으로 그릴 궤도 길이(약 1바퀴)
+  const ISS_ORBIT_MIN = 90;           // 앞으로 그릴 궤도 길이(저궤도 기준 약 1바퀴)
   const ISS_VIS_RADIUS_M = 2000000;   // 관측지 가시권 반경(약 2000km)
 
-  let issOmm = null;                  // ISS로 계산했을 때만 채워진다
+  // 지도는 "마지막으로 통과를 계산한 위성"을 그린다. 어느 위성인지 함께 들고 있어야
+  // 목록에서 다른 위성을 고른 순간 남의 궤도를 그 위성 이름으로 보여 주지 않는다.
+  let issOmm = null, issCatnr = '', issSatName = '';
   let issMap = null, issMarker = null, issStationMarker = null, issCircle = null;
   let issOrbitLines = [];
   let issTimer = null;
-
-  const isIssSelected = () => $('#satSelect').val() === ISS_CATNR;
 
   const toDeg = rad => rad * 180 / Math.PI;
   // eciToGeodetic의 경도는 ±180°를 벗어날 수 있어 지도용으로 정규화한다.
@@ -1280,7 +1283,7 @@ $(function () {
     L.latLng(g.lat, g.lon).distanceTo([currentStation.lat, currentStation.lon]) <= ISS_VIS_RADIUS_M;
 
   const issPopupHtml = g =>
-    `<b>ISS (국제우주정거장)</b><br>` +
+    `<b>${escAttr(issSatName || '위성')}</b><br>` +
     `위도: ${g.lat.toFixed(1)}°<br>` +
     `경도: ${g.lon.toFixed(1)}°<br>` +
     `고도: ${g.alt.toFixed(0)} km` +
@@ -1294,7 +1297,7 @@ $(function () {
     const g = issGeodetic(satrec, now);
     if (!g) return;
 
-    // ISS 마커
+    // 위성 마커
     if (!issMarker) {
       issMarker = L.marker([g.lat, g.lon], {
         icon: L.divIcon({ className:'iss-marker', html:'\u{1F6F0}', iconSize:[28,28], iconAnchor:[14,14] })
@@ -1314,7 +1317,8 @@ $(function () {
         radius: ISS_VIS_RADIUS_M, color:'#4A90D9', weight:1,
         fillColor:'#4A90D9', fillOpacity:.1
       }).addTo(map).bindTooltip(
-        `이 원 안으로 ISS가 들어오면 ${escAttr(currentStation.label)}에서 관측 가능한 위치예요`,
+        `이 원 안으로 ${escAttr(baseSatName(issSatName))} 위치가 들어오면 ` +
+        `${escAttr(currentStation.label)}에서 관측할 수 있어요`,
         { sticky:true }
       );
       issStationMarker = L.circleMarker([currentStation.lat, currentStation.lon], {
@@ -1334,13 +1338,15 @@ $(function () {
     if (issTimer) { clearInterval(issTimer); issTimer = null; }
   }
 
-  // 표시 여부를 판단하고, 보일 때만 그리고 타이머를 돌린다.
+  // 제목·범례의 위성 이름을 맞추고, 그릴 궤도요소가 있을 때만 지도를 띄운다.
+  // 고른 위성과 계산해 둔 위성이 다르면 안내 문구로 되돌린다.
   function issRefresh() {
-    const show = isIssSelected();
-    $('#issMapSection').toggle(show);
-    if (!show) { stopIssTimer(); return; }
+    const selName = $('#satSelect option:selected').text();
+    // 위성 목록을 받기 전에는 빈 문자열이라 그대로 두고, 목록이 채워진 뒤 다시 불린다
+    if (selName) $('.iss-map-sat, #issLegend .iss-lg-sat').text(shortSatName(selName));
+    $('#issMapSection').show();
 
-    const ready = !!issOmm;
+    const ready = !!issOmm && issCatnr === $('#satSelect').val();
     $('#issMapHint').toggle(!ready);
     $('#issMapWrap').toggle(ready);
     $('#issLegend').toggle(ready);
@@ -1350,7 +1356,7 @@ $(function () {
     startIssTimer();
   }
 
-  // 다른 위성을 고르면 지도를 숨긴다 (ISS 전용 기능).
+  // 고른 위성이 바뀌면 제목과 표시 상태를 다시 맞춘다.
   $('#satSelect').on('change', issRefresh);
 
   // ── 스카이 플롯 ──
@@ -1530,7 +1536,8 @@ $(function () {
       currentPasses = passes;
       currentSatName = $('#satSelect option:selected').text();
       renderSun(); // 일출·일몰 탭 타임라인에 패스 마커를 반영
-      if (catnr === ISS_CATNR) issOmm = omm; // ISS 지도는 이 궤도요소를 계속 재사용한다
+      // 지도는 이 궤도요소를 계속 재사용한다 (10초마다 위치만 다시 전파한다)
+      issOmm = omm; issCatnr = catnr; issSatName = currentSatName;
       issRefresh();
       // 같은 궤도요소·Kp 예보로 7일치 베스트 패스를 이어서 계산한다
       renderBestPasses({ omm, station: s, forecast, age, condLabel });
