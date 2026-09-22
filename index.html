@@ -1354,39 +1354,22 @@ $(function () {
   $('#satSelect').on('change', issRefresh);
 
   // ── 스카이 플롯 ──
-  // AOS~LOS를 이만큼 등분해 실제로 전파한다. 3점(AOS·최고점·LOS)만 잇던 예전 방식은
-  // 앙각이 낮은 패스에서 궤적이 꺾인 선처럼 보였다. 값은 그대로 쓰고 밀도만 올린다.
-  const SKY_STEPS = 24;
+  // 궤적은 실측값을 촘촘히 잇는 대신 시작·최고점·끝 3점을 지나는 아치로 그린다.
+  // 화면에 적는 방위·앙각·지속시간 숫자는 그대로 실제 계산값이고, 곡선만 양식화한 것이다.
 
-  // 패스 구간의 (앙각, 방위각, 진행률) 목록. passcalc.js의 lookAngles와 같은 계산이다.
-  function sampleSkyTrack(pass) {
-    if (!currentOmm || !currentStation || typeof satellite === 'undefined') return [];
-    let satrec;
-    try { satrec = satellite.json2satrec(currentOmm); } catch (err) { return []; }
-
-    const observer = {
-      latitude: satellite.degreesToRadians(currentStation.lat),
-      longitude: satellite.degreesToRadians(currentStation.lon),
-      height: 0.05
+  // 지구본(.sky-globe-earth)은 CSS 원이라 실제 중심·반지름을 DOM에서 읽어 쓴다.
+  // 그래야 CSS에서 지구본 크기를 바꿔도 마커가 표면에서 떨어지지 않는다.
+  function skyGlobeGeometry(canvas) {
+    const earth = document.querySelector('.sky-globe-earth');
+    if (!earth) return null;
+    const c = canvas.getBoundingClientRect();
+    const e = earth.getBoundingClientRect();
+    if (!e.width || !e.height) return null;
+    return {
+      cx: e.left - c.left + e.width / 2,
+      cy: e.top - c.top + e.height / 2,
+      r: e.width / 2
     };
-    const t0 = pass.aos.getTime();
-    const span = pass.los.getTime() - t0;
-    const pts = [];
-
-    for (let i = 0; i <= SKY_STEPS; i++) {
-      const f = i / SKY_STEPS;
-      const d = new Date(t0 + span * f);
-      const pv = satellite.propagate(satrec, d);
-      if (!pv || !pv.position) continue;   // 궤도요소가 너무 오래됐거나 계산 실패
-      const gmst = satellite.gstime(d);
-      const la = satellite.ecfToLookAngles(observer, satellite.eciToEcf(pv.position, gmst));
-      pts.push({
-        el: satellite.radiansToDegrees(la.elevation),
-        az: (satellite.radiansToDegrees(la.azimuth) + 360) % 360,
-        f
-      });
-    }
-    return pts;
   }
 
   function selectPass(idx) {
@@ -1430,40 +1413,59 @@ $(function () {
 
     ctx.clearRect(0, 0, W, H);
 
-    // 가로(x)는 패스 진행 시간, 세로(y)는 실제 앙각으로 잡는다. 앙각이 높을수록 위로
-    // 올라가 얼마나 높이 뜨는 패스인지 한눈에 보인다(0°면 시작/끝과 같은 선, 90°면 최상단).
-    const padX = 46;
-    const dotY = 84;                 // 앙각 0°에 해당하는 높이
-    const PEAK_Y_AT_0 = 84;
-    const PEAK_Y_AT_90 = 38;         // 앙각 90°(천정)일 때 높이(가장 위)
-    const xStart = padX, xEnd = W - padX;
+    const LABEL_PAD = 46;   // 방위 라벨이 좌우로 잘리지 않을 만큼의 여백
+    const BOTTOM_PAD = 12;  // 표면 위의 점이 캔버스 아래로 잘리지 않을 만큼의 여백
+    const PEAK_Y_AT_90 = 36;// 앙각 90°(천정)일 때 최고점 높이 — 캔버스 위쪽
 
-    const elToY = el =>
-      PEAK_Y_AT_0 - (Math.min(Math.max(el, 0), 90) / 90) * (PEAK_Y_AT_0 - PEAK_Y_AT_90);
+    // 지구본은 원의 윗부분만 캔버스에 들어온다. 그 표면(수평선) 높이가
+    //   y = cy - sqrt(r² - (x-cx)²)
+    const g = skyGlobeGeometry(canvas) || { cx: W / 2, cy: 360, r: 230 };
+    const surfaceY = x => g.cy - Math.sqrt(Math.max(g.r * g.r - (x - g.cx) * (x - g.cx), 0));
 
-    // 실제 전파값으로 궤적을 만든다. 계산이 실패하면 예전처럼 3점으로 잇는다.
-    const track = sampleSkyTrack(p);
-    const curve = track.length >= 3
-      ? track.map(q => ({ x: xStart + (xEnd - xStart) * q.f, y: elToY(q.el), el: q.el }))
-      : [{ x: xStart, y: dotY, el: 0 },
-         { x: W / 2,  y: elToY(p.maxEl), el: p.maxEl },
-         { x: xEnd,   y: dotY, el: 0 }];
+    // 좌우로 벌릴 수 있는 최대 폭 — 표면이 캔버스 아래로 내려가기 전까지,
+    // 그리고 라벨이 잘리지 않는 범위까지.
+    const dy = g.cy - (H - BOTTOM_PAD);
+    const halfSpan = Math.min(
+      g.cx - LABEL_PAD, W - LABEL_PAD - g.cx,
+      (dy > 0 && dy < g.r) ? Math.sqrt(g.r * g.r - dy * dy) : g.r
+    );
 
-    // 샘플 점을 순서대로 이으면 24등분만으로도 충분히 부드러운 곡선이 된다
+    // 방위각 → 가로 위치. 지평선(원)을 옆에서 본 것으로 보고, 패스의 가운데 방위를
+    // 화면 중앙에 둔 뒤 시작·끝의 방위각 차이를 sin으로 투영한다. 부호는 진행 방향
+    // (방위각이 커지는 쪽 = 오른쪽). 두 방위가 가까우면 곡선이 세로선처럼 찌그러지므로
+    // 최소 폭 0.5를 준다.
+    const sweep = ((p.losAz - p.aosAz + 540) % 360) - 180;   // -180~180
+    const spread = Math.max(Math.abs(Math.sin(sweep * Math.PI / 360)), 0.5);
+    const dir = sweep >= 0 ? 1 : -1;
+    const xStart = g.cx - dir * halfSpan * spread;
+    const xEnd   = g.cx + dir * halfSpan * spread;
+    const yStart = surfaceY(xStart), yEnd = surfaceY(xEnd);
+
+    // 최고점 — 가로는 시작·끝의 중간, 세로는 실제 최고 앙각에 비례해
+    // 지구본 표면(0°)과 캔버스 위쪽(90°) 사이를 오간다.
+    const xPeak = (xStart + xEnd) / 2;
+    const peakBaseY = surfaceY(xPeak);
+    const elRatio = Math.min(Math.max(p.maxEl, 0), 90) / 90;
+    const yPeak = peakBaseY - elRatio * (peakBaseY - PEAK_Y_AT_90);
+
+    // 3점을 지나는 아치. 2차 베지에는 t=.5에서 (P0 + 2C + P2)/4를 지나므로,
+    // 제어점을 이렇게 잡으면 곡선이 최고점을 정확히 통과한다.
+    const ctrlX = 2 * xPeak - (xStart + xEnd) / 2;
+    const ctrlY = 2 * yPeak - (yStart + yEnd) / 2;
+
     ctx.strokeStyle = '#4A90D9';
     ctx.lineWidth = 3.4;
     ctx.lineCap = 'round';
     ctx.setLineDash([0.5, 4.6]);
     ctx.beginPath();
-    ctx.moveTo(curve[0].x, curve[0].y);
-    for (let i = 1; i < curve.length; i++) ctx.lineTo(curve[i].x, curve[i].y);
+    ctx.moveTo(xStart, yStart);
+    ctx.quadraticCurveTo(ctrlX, ctrlY, xEnd, yEnd);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 마커는 곡선과 어긋나지 않도록 궤적의 첫 점 / 최고 앙각 점 / 마지막 점을 그대로 쓴다
-    const pStart = curve[0];
-    const pEnd = curve[curve.length - 1];
-    const pPeak = curve.reduce((best, q) => (q.el > best.el ? q : best), curve[0]);
+    const pStart = { x: xStart, y: yStart };
+    const pEnd   = { x: xEnd,   y: yEnd };
+    const pPeak  = { x: xPeak,  y: yPeak };
 
     ctx.font = '600 13px "IBM Plex Sans KR",sans-serif';
     ctx.textAlign = 'center';
